@@ -1,0 +1,105 @@
+{
+  "name": "wayang-code",
+  "displayName": "Wayang Code",
+  "description": "Wayang agent for coding",
+  "version": "0.0.1",
+  "publisher": "Kayys Tech",
+  "engines": {
+    "vscode": "^1.103.0"
+  },
+  "categories": [
+    "Other"
+  ],
+
+"activationEvents": [
+    "onCommand:wayang.sendQuery",
+    "onCommand:wayang.analyzeFile",
+    "onCommand:wayang.generateTests",
+    "onCommand:wayang.explainCode",
+    "onCommand:wayang.refactorCode",
+    "onCommand:wayang.findAndFix",
+    "onCommand:wayang.clearMemory",
+    "onCommand:wayang.showMemory",
+    "onCommand:wayang.configure",
+    "onCommand:wayang.refreshTasks",
+    "onCommand:wayang.cancelTask",
+    "onView:wayangTasks",
+    "onView:wayangChat"
+  ],
+  "contributes": {
+    "commands": [
+      { "command": "wayang.sendQuery", "title": "Coding Agent: Send Query" },
+      { "command": "wayang.analyzeFile", "title": "Coding Agent: Analyze File" },
+      { "command": "wayang.generateTests", "title": "Coding Agent: Generate Tests" },
+      { "command": "wayang.explainCode", "title": "Coding Agent: Explain Code" },
+      { "command": "wayang.refactorCode", "title": "Coding Agent: Refactor Code" },
+      { "command": "wayang.findAndFix", "title": "Coding Agent: Find & Fix Issues" },
+      { "command": "wayang.clearMemory", "title": "Coding Agent: Clear Memory" },
+      { "command": "wayang.showMemory", "title": "Coding Agent: Show Memory" },
+      { "command": "wayang.configure", "title": "Coding Agent: Configure" },
+      { "command": "wayang.refreshTasks", "title": "Coding Agent: Refresh Tasks" },
+      { "command": "wayang.cancelTask", "title": "Coding Agent: Cancel Task" }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "wayang",
+          "title": "Coding Agent",
+          "icon": "media/agent-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "wayang": [
+        { "id": "wayangChat", "name": "Agent Chat" }
+      ],
+      "explorer": [
+        { "id": "wayangTasks", "name": "Agent Tasks" }
+      ]
+    }
+  },
+  "main": "./dist/extension.js",
+
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+
+
+
+  "scripts": {
+    "vscode:prepublish": "pnpm run package",
+    "compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.3",
+    "@babel/preset-env": "^7.28.3",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.103.0",
+    "@types/ws": "^8.18.1",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.25.8",
+    "eslint": "^9.32.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "axios": "^1.11.0",
+    "uuid": "^11.1.0",
+    "ws": "^8.18.3"
+  }
+}
