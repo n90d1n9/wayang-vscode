@@ -1,13 +1,7 @@
 import * as vscode from 'vscode';
+import { MemoryItem } from '../types/chatTypes';
 
-export interface MemoryItem {
-    id: string;
-    type: 'context' | 'result' | 'interaction';
-    content: any;
-    timestamp: string;
-    relevanceScore?: number;
-    tags?: string[];
-}
+
 
 export class MemoryService {
     private static readonly MEMORY_KEY = 'wayang.memory';
@@ -23,7 +17,7 @@ export class MemoryService {
         taskId: string;
         query: string;
         context: any;
-        timestamp: string;
+        timestamp: Date;
     }): Promise<void> {
         const memoryItem: MemoryItem = {
             id: `context_${context.taskId}`,
@@ -46,7 +40,7 @@ export class MemoryService {
         taskId: string;
         result: any;
         summary: string;
-        timestamp: string;
+        timestamp: Date;
     }): Promise<void> {
         const memoryItem: MemoryItem = {
             id: `result_${result.taskId}`,
@@ -78,7 +72,7 @@ export class MemoryService {
                 response: interaction.response,
                 context: interaction.context
             },
-            timestamp: new Date().toISOString(),
+            timestamp: new Date(),
             tags: this.extractTags(interaction.query + ' ' + interaction.response)
         };
 

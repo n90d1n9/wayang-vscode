@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { FrameworkDetectionResult } from '../../types/frameworkTypes';
+import { FrameworkDetectionResult, ProjectAnalysis } from '../../types/frameworkTypes';
 
 export abstract class BaseDetector {
     protected workspacePath: string;
@@ -9,7 +9,7 @@ export abstract class BaseDetector {
         this.workspacePath = workspacePath;
     }
 
-    
+    abstract detect(): Promise<ProjectAnalysis>;
 
     protected hasFile(pattern: string): boolean {
         try {
@@ -87,5 +87,4 @@ export abstract class BaseDetector {
         return docPatterns.some(pattern => pattern.test(filePath.toLowerCase()));
     }
 
-    abstract detect(): Promise<FrameworkDetectionResult>;
 }

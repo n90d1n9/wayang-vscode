@@ -30,7 +30,7 @@ export interface ProjectContext {
 
 export interface ChatMessage {
   id: string;
-  
+  memoryReferences?: string[];
 }
 
 export interface CodeSuggestion {
@@ -62,4 +62,25 @@ export interface SessionInfo {
     messageCount: number;
     lastActivity: Date;
     isActive: boolean;
+}
+
+export type LoadingMessages = {
+    chat: string;
+    code: string;
+    review: string;
+    test: string;
+};
+
+
+export interface MemoryItem {
+    id: string;
+    query?: string;
+    summary?: string;
+    timestamp: Date;
+    importance?: 'low' | 'medium' | 'high';
+    context?: any;
+    type: 'context' | 'result' | 'interaction';
+    content: any;
+    relevanceScore?: number;
+    tags?: string[];
 }

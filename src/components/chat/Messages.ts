@@ -1,20 +1,24 @@
 import { ChatMessage } from "../../types/chatTypes";
-import { WelcomeMessage } from "./welcome_message";
+import { Memories } from "./memories";
+import { WelcomeMessage } from "./welcomeMessage";
 
 
 export class Messages {
   render(state: any): string {
-    const messages = state.messages || [];
-    
-    if (messages.length === 0) {
-      return `<div class="chat-messages" id="chatMessages"></div>`;
-    }
+        const messages = state.messages || [];
+        const memories = state.memories || [];
+        
+        if (messages.length === 0 && memories.length === 0) {
+            return `<div class="chat-messages" id="chatMessages"></div>`;
+        }
 
-    return `
-      <div class="chat-messages" id="chatMessages">
-          ${messages.map((msg: ChatMessage) => this.renderMessage(msg)).join('')}
-      </div>`;
-  }
+        return `
+            <div class="chat-messages" id="chatMessages">
+                ${memories.length > 0 ? new Memories().render(memories) : ''}
+                ${messages.map((msg: ChatMessage) => this.renderMessage(msg)).join('')}
+            </div>
+        `;
+    }
 
   private renderMessage(message: ChatMessage): string {
     const timestamp = typeof message.timestamp === 'string' 

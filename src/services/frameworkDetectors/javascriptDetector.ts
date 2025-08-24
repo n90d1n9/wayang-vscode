@@ -1,5 +1,6 @@
 import { BaseDetector } from './baseDetector';
-import { FrameworkDetectionResult } from '../../types/frameworkTypes';
+import { FrameworkDetectionResult, ProjectAnalysis } from '../../types/frameworkTypes';
+import { createDefaultAnalysis } from '../../utils/helper';
 
 export class JavaScriptDetector extends BaseDetector {
 
@@ -7,14 +8,8 @@ export class JavaScriptDetector extends BaseDetector {
         super(workspacePath);
     }
 
-    async detect(): Promise<FrameworkDetectionResult> {
-        const result: FrameworkDetectionResult = {
-            frameworks: [],
-            buildTools: [],
-            hasTests: false,
-            hasDocumentation: false,
-            languages: new Map()
-        };
+    async detect(): Promise<ProjectAnalysis> {
+            const result = createDefaultAnalysis();
 
         if (!this.hasFile('package.json')) {
             return result;
