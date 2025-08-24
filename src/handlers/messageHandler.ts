@@ -113,7 +113,7 @@ export class MessageHandler {
 
         const context = this.getEnhancedContext();
         try {
-            const { taskId, loadingMessageId } = await this.chatService.handleUserMessage(text, mode, context);
+            const { taskId, loadingMessageId } = await this.chatService.askAgent(text, mode, context);
             this.updateWebview();
             
         } catch (error) {

@@ -1,8 +1,5 @@
-import { Uri, Webview } from "vscode";
+// src/components/chat/chatPanel.ts
 import * as vscode from "vscode";
-import * as fs from "fs";
-import * as path from "path";
-
 import { Header } from "./header";
 import { StatusBar } from "./statusBar";
 import { InputArea } from "./inputArea";
@@ -12,252 +9,76 @@ import { Toolbar } from "./toolbar";
 import { getCleanStyles } from "./styles";
 
 export class ChatPanel {
-    private webview: Webview;
-    private state: any;
-    private extensionUri: Uri;
+  private webview: vscode.Webview;
+  private extensionUri: vscode.Uri;
+  private state: any;
 
-    constructor(
-        webview: vscode.Webview,
-        extensionUri: vscode.Uri,
-        initialState: any = {},
-    ) {
-        this.webview = webview;
-        this.extensionUri = extensionUri;
-        this.state = initialState;
-    }
+  constructor(webview: vscode.Webview, extensionUri: vscode.Uri, initialState: any = {}) {
+    this.webview = webview;
+    this.extensionUri = extensionUri;
+    this.state = initialState;
+  }
 
-    public updateState(newState: any): void {
-        this.state = { ...this.state, ...newState };
-    }
+  public updateState(newState: any): void {
+    this.state = { ...this.state, ...newState };
+  }
 
-    public render(): string {
-        //const scriptUri = this.getScript(); // this.getWebviewUri('src/scripts/client-script.js');
-        const scriptUri = this.getWebviewUri("src/scripts/client-script.js");
-        return `
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Wayang Code Chat</title>
-                <style>
-                    ${getCleanStyles()}
-                </style>
-            </head>
-            <body>
-                <div class="chat-container">
-                    ${new Header().render(this.state)}
-                    
-                    <div class="main-content">
-                        <div class="sidebar">
-                            ${new SessionsPanel().render(this.state)}
-                            ${this.getProjectContext()}
-                            ${new Toolbar().render(this.state)}
-                        </div>
-                        
-                        <div class="chat-area">
-                            <div class="chat-messages" id="chatMessages">
-                                ${new Messages().render(this.state)}
-                            </div>
-                            ${new InputArea().render(this.state)}
-                        </div>
-                    </div>
-                    
-                    ${new StatusBar().render(this.state)}
-                </div>
-                
-                <script src="${this.getClientScript()}"></script>
-            </body>
-            </html>`;
-    }
+  public render(): string {
+    const scriptUri = this.resourceUri("dist", "scripts", "client-script.js");
+    const styles = getCleanStyles();
+    const csp = [
+      "default-src 'none'",
+      `img-src ${this.webview.cspSource} https:`,
+      `script-src ${this.webview.cspSource}`,
+      `style-src 'unsafe-inline' ${this.webview.cspSource}`
+    ].join("; ");
 
-    private getClientScript(): string {
-        return `
-            const vscode = acquireVsCodeApi();
-            let isWaitingForResponse = false;
-            let currentMode = 'chat';
+    return `
+        <div class="chat-container">
+          ${new Header().render(this.state)}
 
-            class ChatClient {
-                constructor() {
-                    this.initialize();
-                }
+          <div class="main-content">
+            <aside class="sidebar">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <h3>Sessions</h3>
+                <button class="new-session-btn" title="New Session (Ctrl+Shift+N)">+</button>
+              </div>
+              ${new SessionsPanel().render(this.state)}
+              ${this.getProjectContext()}
+              <div style="margin-top:12px;">
+                ${new Toolbar().render(this.state)}
+              </div>
+            </aside>
 
-                initialize() {
-                    this.setupEventListeners();
-                    this.updateSendButton();
-                }
+            <section class="chat-area">
+              <div class="chat-messages" id="chatMessages">
+                ${new Messages().render(this.state)}
+                ${this.state.isStreaming ? `<div class="typing-indicator">Assistant is typing<span class="dots">...</span></div>` : ""}
+            </div>
+              <div class="input-section">
+                ${new InputArea().render(this.state)}
+              </div>
+            </section>
+          </div>
 
-                setupEventListeners() {
-                    // Message input
-                    const messageInput = document.getElementById('messageInput');
-                    if (messageInput) {
-                        messageInput.addEventListener('keydown', (e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                this.sendMessage();
-                            }
-                        });
-                        
-                        messageInput.addEventListener('input', () => {
-                            this.autoResizeTextarea(messageInput);
-                        });
-                    }
+          ${new StatusBar().render?.(this.state) ?? ""}
+        </div>
+    `;
+  }
 
-                    // Mode buttons
-                    document.querySelectorAll('.mode-btn').forEach(btn => {
-                        btn.addEventListener('click', () => {
-                            const mode = btn.dataset.mode;
-                            this.setMode(mode);
-                        });
-                    });
+  // --- helpers ---
+  private resourceUri(...segments: string[]): string {
+    const uri = vscode.Uri.joinPath(this.extensionUri, ...segments);
+    return this.webview.asWebviewUri(uri).toString();
+  }
 
-                    // Send button
-                    const sendButton = document.getElementById('sendButton');
-                    if (sendButton) {
-                        sendButton.addEventListener('click', () => this.sendMessage());
-                    }
-
-                    // Handle messages from extension
-                    window.addEventListener('message', (event) => {
-                        const message = event.data;
-                        switch (message.type) {
-                            case 'updateChat':
-                                this.updateChatMessages(message.messages);
-                                break;
-                            case 'showMemories':
-                                this.showMemories(message.memories);
-                                break;
-                        }
-                    });
-                }
-
-                sendMessage() {
-                    const input = document.getElementById('messageInput');
-                    const message = input.value.trim();
-
-                    if (!message || isWaitingForResponse) return;
-
-                    vscode.postMessage({
-                        type: 'sendMessage',
-                        text: message,
-                        mode: currentMode
-                    });
-
-                    input.value = '';
-                    input.style.height = 'auto';
-                    isWaitingForResponse = true;
-                    this.updateSendButton();
-                }
-
-                setMode(mode) {
-                    currentMode = mode;
-                    document.querySelectorAll('.mode-btn').forEach(btn => {
-                        btn.classList.toggle('active', btn.dataset.mode === mode);
-                    });
-                }
-
-                updateChatMessages(messages) {
-                    const chatMessages = document.getElementById('chatMessages');
-                    if (!chatMessages) return;
-
-                    chatMessages.innerHTML = '';
-
-                    if (messages.length === 0) {
-                        chatMessages.innerHTML = '
-                            <div class="welcome-message">
-                                <h3>🎭 Welcome to Wayang Code!</h3>
-                                <p>Your intelligent coding companion</p>
-                            </div>
-                        ';
-                        return;
-                    }
-
-                    messages.forEach(msg => {
-                        const messageDiv = document.createElement('div');
-                        messageDiv.className = \`message \${msg.type}\`;
-                        if (msg.loading) messageDiv.classList.add('loading');
-                        
-                        messageDiv.innerHTML = \`
-                            <div class="message-header">
-                                \${msg.type === 'user' ? '👤 You' : '🤖 Wayang Code'}
-                                \${msg.loading ? '<span style="margin-left: 8px;">⚙️</span>' : ''}
-                            </div>
-                            <div class="message-content">\${this.formatMessage(msg.content)}</div>
-                        \`;
-
-                        chatMessages.appendChild(messageDiv);
-                    });
-
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                    isWaitingForResponse = messages.some(msg => msg.loading);
-                    this.updateSendButton();
-                }
-
-                formatMessage(content) {
-                    return content
-                        .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
-                        .replace(/\\*(.*?)\\*/g, '<em>$1</em>')
-                        .replace(/\\n/g, '<br>');
-                }
-
-                updateSendButton() {
-                    const sendButton = document.getElementById('sendButton');
-                    if (sendButton) {
-                        sendButton.disabled = isWaitingForResponse;
-                        sendButton.textContent = isWaitingForResponse ? 'Sending...' : 'Send';
-                    }
-                }
-
-                autoResizeTextarea(textarea) {
-                    textarea.style.height = 'auto';
-                    textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-                }
-
-                showMemories(memories) {
-                    console.log('Showing memories:', memories);
-                    // Implement memories display if needed
-                }
-            }
-
-            // Initialize when DOM is loaded
-            document.addEventListener('DOMContentLoaded', () => {
-                new ChatClient();
-            });
-        `;
-    }
-
-    private getScript(): string {
-        // Load the external client script
-        const scriptPath = path.join(
-            __dirname,
-            "..",
-            "scripts",
-            "chat-client.js",
-        );
-        try {
-            return fs.readFileSync(scriptPath, "utf8");
-        } catch (error) {
-            console.error("Error loading client script:", error);
-            return `
-        // Fallback minimal script
-        const vscode = acquireVsCodeApi();
-        console.log('Chat panel initialized');
-      `;
-        }
-    }
-
-    private getWebviewUri(relativePath: string): string {
-        const filePath = path.join(this.extensionUri.fsPath, relativePath);
-        return this.webview.asWebviewUri(Uri.file(filePath)).toString();
-    }
-
-    private getProjectContext(): string {
-        return `
+  private getProjectContext(): string {
+    return `
       <div class="project-context" id="projectContext">
-          <span id="contextInfo">Loading project context...</span>
-          <button class="context-toggle" onclick="toggleProjectContext()">
-              <span id="contextToggle">📋 Hide</span>
-          </button>
+        <span id="contextInfo">Loading project context...</span>
+        <button class="context-toggle" id="contextToggleBtn">
+          <span id="contextToggle">📋 Hide</span>
+        </button>
       </div>`;
-    }
+  }
 }

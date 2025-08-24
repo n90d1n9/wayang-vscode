@@ -84,3 +84,5 @@ export interface MemoryItem {
     relevanceScore?: number;
     tags?: string[];
 }
+
+export type StreamCallback = (chatHistory: ChatMessage[]) => void;

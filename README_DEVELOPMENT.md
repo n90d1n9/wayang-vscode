@@ -228,3 +228,18 @@ After installation:
 ---
 
 👉 Do you want me to give you a **scripted workflow** (like a `pnpm run dev` and `pnpm run package`) so you don’t have to remember these commands every time?
+
+
+
+
+Example flow in your code
+User opens the "Wayang Chat" sidebar
+→ VS Code calls WayangWebviewProvider.resolveWebviewView(...).
+Provider injects HTML from ChatPanel.render()
+→ That loads your React/VanillaJS front-end (with scripts + UI).
+User sends a chat message in the webview
+→ The frontend posts a message (vscode.postMessage).
+MessageHandler in WayangWebviewProvider receives it
+→ Routes to ChatService, SessionService, or ProjectService.
+Responses are sent back with postMessage
+→ UI updates automatically.

@@ -1,5 +1,4 @@
 // Client-side JavaScript that will be injected into the webview
-// scripts/client-script.js
 class ChatClient {
     constructor() {
         this.vscode = acquireVsCodeApi();
@@ -18,52 +17,54 @@ class ChatClient {
     }
 
     initialize() {
+    document.addEventListener("DOMContentLoaded", () => {
         this.setupEventListeners();
         this.setupLayout();
         this.updateSendButton();
         this.setMode('chat');
         this.updateStreamToggle();
 
-        // Focus input after initialization
-        setTimeout(() => {
-            const input = document.getElementById('messageInput');
-            if (input) {input.focus();}
-        }, 500);
-    }
+        const input = document.getElementById('messageInput');
+        if (input) {input.focus();}
+    });
+}
+
 
     setupEventListeners() {
-        // Message input events
-        const messageInput = document.getElementById('messageInput');
-        if (messageInput) {
-            messageInput.addEventListener('input', this.handleInput.bind(this));
-            messageInput.addEventListener('keydown', this.handleKeydown.bind(this));
+    const chatArea = document.querySelector('.chat-area');
+
+    // Send button
+    chatArea.addEventListener('click', (e) => {
+        if (e.target.id === 'sendButton') {
+            this.sendMessage();
         }
+    });
 
-        // Search input events
-        const searchInput = document.getElementById('searchInput');
-        if (searchInput) {
-            searchInput.addEventListener('input', this.handleSearchInput.bind(this));
-        }
-
-        // Mode buttons
-        document.querySelectorAll('.mode-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const mode = btn.dataset.mode;
-                this.setModeAndFocus(mode);
-            });
-        });
-
-        // Settings checkboxes
-        document.querySelectorAll('.feature-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', this.saveSettings.bind(this));
-        });
-
-        // Global keyboard shortcuts
-        document.addEventListener('keydown', this.handleGlobalKeydown.bind(this));
-
-        // Handle messages from extension
-        window.addEventListener('message', this.handleExtensionMessage.bind(this));
+    // Input typing
+    const messageInput = document.getElementById('messageInput');
+    if (messageInput) {
+        messageInput.addEventListener('input', this.handleInput.bind(this));
+        messageInput.addEventListener('keydown', this.handleKeydown.bind(this));
     }
+
+    // Toggle project context
+    const contextToggleBtn = document.getElementById('contextToggleBtn');
+    if (contextToggleBtn) {
+        contextToggleBtn.addEventListener('click', () => {
+            const contextInfo = document.getElementById('contextInfo');
+            const contextToggle = document.getElementById('contextToggle');
+            if (contextInfo && contextToggle) {
+                const isHidden = contextInfo.style.display === 'none';
+                contextInfo.style.display = isHidden ? '' : 'none';
+                contextToggle.textContent = isHidden ? '📋 Hide' : '📋 Show';
+            }
+        });
+    }
+
+    // Handle messages from extension
+    window.addEventListener('message', this.handleExtensionMessage.bind(this));
+}
+
 
     setupLayout() {
         // Hide toolbar by default
@@ -350,6 +351,6 @@ class ChatClient {
 }
 
 // Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', () => {
     window.chatClient = new ChatClient();
 });
