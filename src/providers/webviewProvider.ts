@@ -3,19 +3,21 @@ import { AgentClient } from "../clients/agentClient";
 import { ChatService } from "../services/chatService";
 import { SessionService } from "../services/sessionService";
 import { ProjectService } from "../services/projectService";
-import { MessageHandler } from "../handlers/messageHandler";
 import { LLMService } from "../services/llmService";
 import { ChatPanel } from "../components/chat/chatPanel";
+import { MessageHandler } from "../handlers/messageHandler";
 
 export class WayangWebviewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = "wayangChat";
+
     private _view?: vscode.WebviewView;
-    
+    private chatPanel?: ChatPanel;
+    private messageHandler?: MessageHandler;
+
     private chatService: ChatService;
     private sessionService: SessionService;
     private projectService: ProjectService;
     private llmService: LLMService;
-    private messageHandler?: MessageHandler;
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -33,124 +35,150 @@ export class WayangWebviewProvider implements vscode.WebviewViewProvider {
         _token: vscode.CancellationToken,
     ) {
         this._view = webviewView;
-        this.messageHandler = new MessageHandler(
-            this.chatService,
-            this.sessionService,
-            this.projectService,
-            webviewView
-        );
-
         webviewView.webview.options = {
             enableScripts: true,
             localResourceRoots: [this._extensionUri],
         };
 
-        webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-
-        webviewView.webview.onDidReceiveMessage(
-            (message) => {
-                this.messageHandler?.handleMessage(message);
+        this.chatPanel = new ChatPanel(
+            webviewView.webview,
+            this._extensionUri,
+            {
+                chatHistory: this.chatService.getChatHistory(),
+                sessionId: this.sessionService.getCurrentSessionId(),
+                projectContext: this.projectService.getProjectContext(),
             },
-            undefined,
-            [],
         );
 
-        // Load initial state
-        this.loadInitialState();
+        webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+
+        // Stream callback updates webview
+        this.chatService.setStreamCallback((chatHistory) => {
+            this.chatPanel?.updateState({
+                chatHistory,
+                isStreaming: !!this.chatService.getCurrentStreamMessageId(),
+            });
+
+            this.chatPanel?.updateState({ chatHistory });
+            this._view?.webview.postMessage({
+                type: "updateChatHTML",
+                html: this.chatPanel?.render(),
+            });
+        });
+
+        webviewView.webview.onDidReceiveMessage(async (message) => {
+            switch (message.type) {
+                case "userMessage":
+                    await this.chatService.askAgent(message.text, "chat", {});
+                    break;
+
+                case "analyzeProject":
+                    const analysis = await this.projectService.analyzeProject();
+                    this.chatPanel?.updateState({ projectAnalysis: analysis });
+                    this._view?.webview.postMessage({
+                        type: "updateChatHTML",
+                        html: this.chatPanel?.render(),
+                    });
+                    break;
+
+                default:
+                    this.messageHandler?.handleMessage(message);
+            }
+        });
     }
 
-    private _getHtmlForWebview(webview: vscode.Webview) {
-        const chatPanel = new ChatPanel(webview, this._extensionUri);
-        return chatPanel.render();
+    private _getHtmlForWebview(webview: vscode.Webview): string {
+        const styleUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(this._extensionUri, "media", "style.css"),
+        );
+        const scriptUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(this._extensionUri, "media", "main.js"),
+        );
+        const nonce = this.getNonce();
+
+        return /*html*/ `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta http-equiv="Content-Security-Policy"
+                content="default-src 'none';
+                         img-src ${webview.cspSource} https:;
+                         script-src 'nonce-${nonce}' ${webview.cspSource};
+                         style-src ${webview.cspSource} 'unsafe-inline';">
+            <link rel="stylesheet" href="${styleUri}">
+            <title>Wayang Chat</title>
+        </head>
+        <body>
+            ${this.chatPanel?.render() ?? "<div>Loading...</div>"}
+            <script nonce="${nonce}" src="${scriptUri}"></script>
+        </body>
+        </html>
+        `;
+    }
+
+    private getNonce(): string {
+        let text = "";
+        const possible =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        for (let i = 0; i < 32; i++) {
+            text += possible.charAt(
+                Math.floor(Math.random() * possible.length),
+            );
+        }
+        return text;
     }
 
     private loadInitialState() {
         this.loadChatSessions();
         this.loadChatHistory();
-        this.updateSessionsList();
-    }
-
-    private loadChatHistory() {
-        const saved = vscode.workspace.getConfiguration("wayang").get("chatHistory", []);
-        this.chatService.setChatHistory(Array.isArray(saved) ? saved : []);
         this.updateWebview();
     }
 
+    private loadChatHistory() {
+        const saved = vscode.workspace
+            .getConfiguration("wayang")
+            .get("chatHistory", []);
+        this.chatService.setChatHistory(Array.isArray(saved) ? saved : []);
+        this.chatPanel?.updateState({
+            chatHistory: this.chatService.getChatHistory(),
+        });
+    }
+
     private loadChatSessions() {
-        const saved = vscode.workspace.getConfiguration("wayang").get("chatSessions", {});
+        const saved = vscode.workspace
+            .getConfiguration("wayang")
+            .get("chatSessions", {});
         if (typeof saved === "object" && saved !== null) {
             this.sessionService.setAllSessions(saved);
         }
     }
 
-    public showMemories(memories: any[]) {
-        if (this._view) {
-            // Update the state with memories
-            this.updateWebviewState({ memories: memories });
-        }
-    }
-
-    private updateWebviewState(newState: any) {
-        // If you have a state management system, update it here
-        // Then trigger a re-render or send update message
-        if (this._view) {
-            this._view.webview.postMessage({
-                type: "updateState",
-                state: newState
-            });
-        }
-    }
-
-
-
     private updateWebview() {
-        if (this._view) {
+        if (this._view && this.chatPanel) {
+            // Send new HTML snapshot to the webview
             this._view.webview.postMessage({
-                type: "updateChat",
-                messages: this.chatService.getChatHistory(),
-                sessionId: this.sessionService.getCurrentSessionId(),
-                isStreaming: this.chatService.getIsStreaming(),
-                projectContext: this.projectService.getProjectContext(),
+                type: "updateHTML",
+                html: this.chatPanel.render(),
             });
         }
     }
 
-    private updateSessionsList() {
-        if (this._view) {
-            this._view.webview.postMessage({
-                type: "updateSessions",
-                sessions: this.sessionService.getSessionList(),
-            });
-        }
-    }
-
-    // Public methods for external integration
-    public addMessage(message: any) {
-        this.chatService.getChatHistory().push(message);
-        this.updateWebview();
-    }
-
-    public getCurrentSession(): string {
-        return this.sessionService.getCurrentSessionId();
-    }
-
-    public getProjectContext() {
-        return this.projectService.getProjectContext();
-    }
-
+    // Expose public methods for external updates
     public refreshProjectContext() {
         this.projectService.updateProjectContext();
+        this.chatPanel?.updateState({
+            projectContext: this.projectService.getProjectContext(),
+        });
         this.updateWebview();
     }
 
-    // Add method to handle LLM analysis requests
-    public async analyzeProjectWithLLM(): Promise<any> {
-        try {
-            const analysis = await this.projectService.analyzeProject();
-            return analysis;
-        } catch (error) {
-            console.error("LLM analysis failed:", error);
-            throw error;
-        }
+    public addMessage(message: any) {
+        this.chatService.getChatHistory().push(message);
+        this.chatPanel?.updateState({
+            chatHistory: this.chatService.getChatHistory(),
+        });
+        this.updateWebview();
     }
 }

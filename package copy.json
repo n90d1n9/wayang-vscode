@@ -11,7 +11,6 @@
     "Other"
   ],
   "activationEvents": [
-    "onView:wayangChat",
     "onCommand:wayang.sendQuery",
   "onCommand:wayang.analyzeFile",
   "onCommand:wayang.generateTests",
@@ -50,17 +49,19 @@
     "views": {
       "wayang": [
         {
+          "id": "wayangTasks",
+          "name": "Tasks"
+        },
+        {
           "id": "wayangChat",
           "name": "Chat",
-          "type": "webview"
+          "type": "webview" 
         }
       ]
     }
   },
   "main": "./dist/extension.js",
-"assets": [
-  "media/*"
-],
+
   "repository": {
     "type": "git",
     "url": ""

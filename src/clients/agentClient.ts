@@ -55,54 +55,59 @@ export class AgentClient {
     }
 
     async initialize(): Promise<void> {
-        try {
-            // Test HTTP connection
-            await this.httpClient.get("/health");
-
-            // Initialize WebSocket connection for real-time updates
-            await this.initializeWebSocket();
-
-            console.log("Agent client initialized successfully");
-        } catch (error) {
-            console.error("Failed to initialize agent client:", error);
-            throw new Error(`Cannot connect to backend at ${this.baseUrl}`);
+    try {
+        await this.httpClient.get("/health");
+        await this.initializeWebSocket();
+        console.log("Agent client initialized successfully");
+    } catch (error: any) {
+        if (isAxiosError(error)) {
+            console.error("HTTP error during init:", {
+                status: error.response?.status,
+                data: error.response?.data,
+                message: error.message,
+            });
+        } else {
+            console.error("Non-HTTP error during init:", error);
         }
+        throw error; // rethrow original, don’t wrap in a new Error
     }
+}
+
 
     private async initializeWebSocket(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            const wsUrl = this.baseUrl.replace("http", "ws") + "/ws/agent";
-            this.wsClient = new WebSocket(wsUrl);
+    return new Promise((resolve, reject) => {
+        const wsUrl = this.baseUrl.replace("http", "ws") + "/ws/agent";
+        this.wsClient = new WebSocket(wsUrl);
 
-            this.wsClient.on("open", () => {
-                console.log("WebSocket connection established");
-                resolve();
-            });
+        let resolved = false;
 
-            this.wsClient.on("message", (data: WebSocket.Data) => {
-                try {
-                    const response: AgentResponse = JSON.parse(data.toString());
-                    this.handleWebSocketMessage(response);
-                } catch (error) {
-                    console.error("Failed to parse WebSocket message:", error);
-                }
-            });
-
-            this.wsClient.on("error", (error) => {
-                console.error("WebSocket error:", error);
-                reject(error);
-            });
-
-            this.wsClient.on("close", () => {
-                console.log("WebSocket connection closed");
-                // Attempt to reconnect after 5 seconds
-                setTimeout(
-                    () => this.initializeWebSocket().catch(console.error),
-                    5000,
-                );
-            });
+        this.wsClient.on("open", () => {
+            console.log("WebSocket connection established");
+            resolved = true;
+            resolve();
         });
-    }
+
+        this.wsClient.on("message", (data: WebSocket.Data) => {
+            try {
+                const response: AgentResponse = JSON.parse(data.toString());
+                this.handleWebSocketMessage(response);
+            } catch (error) {
+                console.error("Failed to parse WebSocket message:", error);
+            }
+        });
+
+        this.wsClient.on("error", (error) => {
+            console.error("WebSocket error:", error);
+            if (!resolved) {reject(error);} // only reject if init hasn’t succeeded
+        });
+
+        this.wsClient.on("close", () => {
+            console.warn("WebSocket closed, retrying in 5s...");
+            setTimeout(() => this.initializeWebSocket().catch(console.error), 5000);
+        });
+    });
+}
+
 
     private handleWebSocketMessage(response: AgentResponse) {
         const handler = this.eventHandlers.get(response.id);
