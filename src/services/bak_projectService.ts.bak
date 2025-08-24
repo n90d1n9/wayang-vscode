@@ -1,0 +1,249 @@
+import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import { ProjectContext } from '../types/chatTypes';
+
+export class ProjectService {
+    private projectContext: ProjectContext = {};
+
+    constructor() {
+        this.initializeProjectContext();
+    }
+
+    async analyzeProject(): Promise<ProjectAnalysis> {
+        const analysis: ProjectAnalysis = {
+            totalFiles: 0,
+            languages: new Map<string, number>(),
+            complexity: 0,
+            codeQuality: 0,
+            frameworks: [],
+            buildTools: [],
+            hasTests: false,
+            hasDocumentation: false,
+            platform: 'Unknown'
+        };
+
+        try {
+            const files = await vscode.workspace.findFiles(
+                "**/*.{js,ts,java,py,go,rs,php,cs,cpp,c,html,css,json,xml,yaml,yml,md,txt,feature,test,spec}", 
+                "**/{node_modules,.git,build,dist,target,out,bin,obj}/**", 
+                100
+            );
+            
+            analysis.totalFiles = files.length;
+
+            // Analyze file types
+            for (const file of files) {
+                const ext = path.extname(file.fsPath).substring(1).toLowerCase();
+                analysis.languages.set(ext, (analysis.languages.get(ext) || 0) + 1);
+            }
+
+            // Run all detectors
+            const detectors = [
+                new JavaDetector(this.projectContext.workspacePath),
+                new JavaScriptDetector(this.projectContext.workspacePath),
+                new PythonDetector(this.projectContext.workspacePath),
+                new PhpDetector(this.projectContext.workspacePath),
+                new DotNetDetector(this.projectContext.workspacePath),
+                new GoDetector(this.projectContext.workspacePath),
+                new FrontendDetector(this.projectContext.workspacePath),
+                new BuildToolDetector(this.projectContext.workspacePath)
+            ];
+
+            for (const detector of detectors) {
+                const result = await detector.detect();
+                analysis.frameworks.push(...result.frameworks);
+                analysis.buildTools.push(...result.buildTools);
+                analysis.hasTests = analysis.hasTests || result.hasTests;
+                analysis.hasDocumentation = analysis.hasDocumentation || result.hasDocumentation;
+            }
+
+            // Remove duplicates
+            analysis.frameworks = [...new Set(analysis.frameworks)];
+            analysis.buildTools = [...new Set(analysis.buildTools)];
+
+            // Determine platform
+            analysis.platform = this.determinePlatform(analysis);
+
+            // Calculate metrics
+            analysis.complexity = this.calculateComplexity(analysis);
+            analysis.codeQuality = this.calculateCodeQuality(analysis);
+
+        } catch (error) {
+            console.error("Error analyzing project:", error);
+        }
+
+        return analysis;
+    }
+
+    private determinePlatform(analysis: ProjectAnalysis): string {
+        if (analysis.frameworks.some(f => f.includes('Spring') || f.includes('Quarkus'))) return 'Java';
+        if (analysis.frameworks.some(f => f.includes('React') || f.includes('Vue') || f.includes('Angular'))) return 'JavaScript/TypeScript';
+        if (analysis.frameworks.some(f => f.includes('Django') || f.includes('Flask'))) return 'Python';
+        if (analysis.frameworks.some(f => f.includes('Laravel') || f.includes('Symfony'))) return 'PHP';
+        if (analysis.frameworks.some(f => f.includes('ASP.NET'))) return '.NET';
+        if (analysis.frameworks.some(f => f.includes('Gin') || f.includes('Echo'))) return 'Go';
+        return 'Mixed/Unknown';
+    }
+
+    private calculateComplexity(analysis: ProjectAnalysis): number {
+        const codeFiles = Array.from(analysis.languages.values())
+            .reduce((sum: number, count: number) => sum + count, 0);
+        
+        return Math.min(codeFiles / 10, 10);
+    }
+
+    private calculateCodeQuality(analysis: ProjectAnalysis): number {
+        let quality = 5;
+        
+        if (analysis.hasTests) quality += 3;
+        if (analysis.hasDocumentation) quality += 2;
+        if (analysis.frameworks.length > 0) quality += 1;
+        if (analysis.buildTools.length > 0) quality += 1;
+        
+        if (analysis.totalFiles > 100) quality -= 1;
+        if (analysis.totalFiles > 500) quality -= 2;
+        
+        return Math.max(1, Math.min(quality, 10));
+    }
+
+    initializeProjectContext() {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (workspaceFolders) {
+            this.projectContext = {
+                workspacePath: workspaceFolders[0].uri.fsPath,
+                projectType: this.detectProjectType(workspaceFolders[0].uri.fsPath),
+                dependencies: this.getDependencies(),
+                gitBranch: this.getCurrentGitBranch(),
+            };
+        }
+    }
+
+    getProjectContext(): ProjectContext {
+        return this.projectContext;
+    }
+
+    updateProjectContext() {
+        this.projectContext.dependencies = this.getDependencies();
+        this.projectContext.gitBranch = this.getCurrentGitBranch();
+        return this.projectContext;
+    }
+
+    private detectProjectType(workspacePath: string): string {
+        const projectFiles = [
+            { file: "pom.xml", type: "Maven/Java" },
+            { file: "build.gradle", type: "Gradle/Java" },
+            { file: "package.json", type: "Node.js" },
+            { file: "requirements.txt", type: "Python" },
+            { file: "Cargo.toml", type: "Rust" },
+            { file: "go.mod", type: "Go" },
+            { file: "composer.json", type: "PHP" },
+            { file: "*.csproj", type: "C#/.NET" },
+        ];
+
+        for (const project of projectFiles) {
+            if (fs.existsSync(path.join(workspacePath, project.file))) {
+                return project.type;
+            }
+        }
+
+        return "Unknown";
+    }
+
+    private getDependencies(): string[] {
+        try {
+            const workspacePath = this.projectContext.workspacePath;
+            if (!workspacePath) {return [];}
+
+            if (fs.existsSync(path.join(workspacePath, "package.json"))) {
+                const packageJson = JSON.parse(
+                    fs.readFileSync(path.join(workspacePath, "package.json"), "utf8")
+                );
+                return Object.keys({
+                    ...packageJson.dependencies,
+                    ...packageJson.devDependencies,
+                });
+            }
+
+            // Add other dependency detection methods...
+            
+        } catch (error) {
+            console.error("Error reading dependencies:", error);
+        }
+        
+        return [];
+    }
+
+    private getCurrentGitBranch(): string {
+        try {
+            const workspacePath = this.projectContext.workspacePath;
+            if (!workspacePath) {return "unknown";}
+
+            const gitHeadPath = path.join(workspacePath, ".git", "HEAD");
+            if (fs.existsSync(gitHeadPath)) {
+                const headContent = fs.readFileSync(gitHeadPath, "utf8").trim();
+                if (headContent.startsWith("ref: refs/heads/")) {
+                    return headContent.substring("ref: refs/heads/".length);
+                }
+            }
+            return "main";
+        } catch (error) {
+            return "unknown";
+        }
+    }
+
+    async analyzeProject(): Promise<any> {
+        const analysis = {
+            totalFiles: 0,
+            languages: new Map<string, number>(),
+            complexity: 0,
+            codeQuality: 0,
+        };
+
+        try {
+            const files = await vscode.workspace.findFiles(
+                "**/*.{js,ts,java,py,go,rs,php,cs,cpp,c,html,css,json,xml,yaml,yml}", 
+                "**/node_modules/**", 
+                50
+            );
+            
+            analysis.totalFiles = files.length;
+
+            for (const file of files) {
+                const ext = path.extname(file.fsPath).substring(1);
+                analysis.languages.set(ext, (analysis.languages.get(ext) || 0) + 1);
+            }
+
+            // Add some simple analysis metrics
+            analysis.complexity = this.calculateComplexity(analysis);
+            analysis.codeQuality = this.calculateCodeQuality(analysis);
+
+            return analysis;
+        } catch (error) {
+            console.error("Error analyzing project:", error);
+            return analysis;
+        }
+    }
+
+    private calculateComplexity(analysis: any): number {
+        // Simple complexity calculation based on file count and types
+        const codeFiles = Array.from(analysis.languages.values())
+            .reduce((sum, count) => sum + count, 0);
+        
+        return Math.min(codeFiles / 10, 10); // Scale complexity from 0-10
+    }
+
+    private calculateCodeQuality(analysis: any): number {
+        // Simple code quality metric (placeholder)
+        const hasTests = analysis.languages.has('test') || analysis.languages.has('spec');
+        const hasDocumentation = analysis.languages.has('md') || analysis.languages.has('txt');
+        
+        let quality = 5; // Base quality
+        
+        if (hasTests) {quality += 2;}
+        if (hasDocumentation) {quality += 1;}
+        if (analysis.totalFiles > 50) {quality -= 1;} // Larger projects might be more complex
+        
+        return Math.max(1, Math.min(quality, 10)); // Keep between 1-10
+    }
+}
