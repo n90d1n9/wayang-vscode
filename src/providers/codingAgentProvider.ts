@@ -93,7 +93,7 @@ export class WayangProvider
         // Show progress
         vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
-            title: "Coding Agent",
+            title: "Wayang Code",
             cancellable: true,
         }, async (progress, token) => {
             this.activeProgress.set(taskId, progress);
