@@ -1,19 +1,13 @@
 import * as vscode from "vscode";
 import {
     AgentClient,
-    AgentRequest,
-    AgentResponse,
-    ExecutionStep,
 } from "../clients/agentClient";
 
 import { v4 as uuidv4 } from "uuid";
 import { MemoryService } from "../services/memoryService";
+import { AgentRequest, AgentResponse, ExecutionStep } from "../types/agentTypes";
 
-interface BaseTreeItem {
-    itemType: 'task' | 'step';
-    label: string;
-    description?: string;
-}
+
 
 export class WayangProvider
     implements vscode.TreeDataProvider<AgentTaskItem> {
@@ -124,7 +118,7 @@ export class WayangProvider
                     taskId,
                     query,
                     context: request.context,
-                    timestamp: new Date().toISOString(),
+                    timestamp: new Date(),
                 });
             } catch (error) {
                 console.error("Task execution failed:", error);
@@ -162,10 +156,10 @@ export class WayangProvider
         if (
             lowerQuery.includes("fix") || lowerQuery.includes("bug") ||
             lowerQuery.includes("error")
-        ) return "fix";
+        ) {return "fix";}
         if (
             lowerQuery.includes("explain") || lowerQuery.includes("what does")
-        ) return "explain";
+        ) {return "explain";}
 
         return "general";
     }
@@ -176,7 +170,7 @@ export class WayangProvider
         progress: vscode.Progress<{ message: string; increment?: number }>,
     ): Promise<void> {
         const taskItem = this.tasks.get(taskId);
-        if (!taskItem) return;
+        if (!taskItem) {return;}
 
         // Update task status - map the status values correctly
         taskItem.status = this.mapStatus(response.status);
@@ -204,7 +198,7 @@ export class WayangProvider
                 taskId,
                 result: response.data,
                 summary: response.message || "Task completed",
-                timestamp: new Date().toISOString(),
+                timestamp: new Date(),
             });
 
             // Show results
@@ -260,7 +254,7 @@ export class WayangProvider
         taskItem: AgentTaskItem,
         response: AgentResponse,
     ): Promise<void> {
-        if (!response.data) return;
+        if (!response.data) { return;}
 
         const result = response.data;
 
@@ -403,7 +397,7 @@ export class WayangProvider
 
     private async createTestFile(tests: any): Promise<void> {
         const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-        if (!workspaceFolder) return;
+        if (!workspaceFolder) {return;}
 
         const testFileName = tests.fileName || "generated.test.js";
         const testFilePath = vscode.Uri.joinPath(
@@ -455,7 +449,7 @@ export class WayangProvider
 
     private getEditorContext(): any {
         const activeEditor = vscode.window.activeTextEditor;
-        if (!activeEditor) return {};
+        if (!activeEditor) {return {};}
 
         const document = activeEditor.document;
         const selection = activeEditor.selection;

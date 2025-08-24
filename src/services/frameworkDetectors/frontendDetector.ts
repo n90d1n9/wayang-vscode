@@ -1,7 +1,6 @@
 import { BaseDetector } from './baseDetector';
-import { FrameworkDetectionResult } from '../../types/frameworkTypes';
-import * as fs from 'fs';
-import path from 'path';
+import { ProjectAnalysis } from '../../types/frameworkTypes';
+import { createDefaultAnalysis } from '../../utils/helper';
 
 
 export class FrontendDetector extends BaseDetector {
@@ -9,15 +8,9 @@ export class FrontendDetector extends BaseDetector {
     constructor(workspacePath: string) {
         super(workspacePath);
     }
-    
-    async detect(): Promise<FrameworkDetectionResult> {
-        const result: FrameworkDetectionResult = {
-            frameworks: [],
-            buildTools: [],
-            hasTests: false,
-            hasDocumentation: false,
-            languages: new Map()
-        };
+
+    async detect(): Promise<ProjectAnalysis> {
+        const result = createDefaultAnalysis();
 
         // Detect build tools and CSS frameworks
         result.buildTools.push(...this.detectBuildTools());

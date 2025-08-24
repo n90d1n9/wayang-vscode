@@ -7,7 +7,12 @@ import { JavaDetector } from './frameworkDetectors/javaDetector';
 import { JavaScriptDetector } from './frameworkDetectors/javascriptDetector';
 
 import { LLMService } from './llmService';
-
+import { BuildToolDetector } from './frameworkDetectors/buildToolDetector';
+import { DotNetDetector } from './frameworkDetectors/dotNetDetector';
+import { FrontendDetector } from './frameworkDetectors/frontendDetector';
+import { GoDetector } from './frameworkDetectors/goDetector';
+import { PHPDetector } from './frameworkDetectors/phpDetector';
+import { PythonDetector } from './frameworkDetectors/pythonDetector';
 export class FrameworkDetectionService {
     private llmService: LLMService;
 
@@ -33,7 +38,7 @@ export class FrameworkDetectionService {
             new JavaDetector(workspacePath),
             new JavaScriptDetector(workspacePath),
             new PythonDetector(workspacePath),
-            new PhpDetector(workspacePath),
+            new PHPDetector(workspacePath),
             new DotNetDetector(workspacePath),
             new GoDetector(workspacePath),
             new FrontendDetector(workspacePath),

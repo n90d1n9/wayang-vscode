@@ -98,14 +98,13 @@ export class SessionService {
         );
     }
 
-    setAllSessions(sessions: Record<string, ChatMessage[]>) {
-        // Clear existing sessions
+    setAllSessions(sessions: Record<string, any>): void {
         this.chatSessions.clear();
         
-        // Add all sessions from the record
-        Object.entries(sessions).forEach(([id, messages]) => {
-            // Ensure messages is always an array
-            this.chatSessions.set(id, Array.isArray(messages) ? messages : []);
+        Object.entries(sessions).forEach(([sessionId, messages]) => {
+            if (Array.isArray(messages)) {
+                this.chatSessions.set(sessionId, messages);
+            }
         });
         
         // Ensure default session exists

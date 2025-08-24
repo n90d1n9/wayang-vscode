@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { AgentClient } from '../clients/agentClient';
-import { ChatMessage } from '../types/chatTypes';
+import { ChatMessage, LoadingMessages } from '../types/chatTypes';
+import { simpleIDgenerator } from '../utils/helper';
 
 export class ChatService {
     private chatHistory: ChatMessage[] = [];
@@ -11,7 +12,7 @@ export class ChatService {
 
     async handleUserMessage(message: string, mode: string = "chat", context: any) {
         const userMessage: ChatMessage = {
-            id: Date.now().toString(),
+            id: simpleIDgenerator(),
             type: "user",
             content: message,
             timestamp: new Date(),
@@ -112,13 +113,18 @@ export class ChatService {
     }
 
     private getLoadingMessage(mode: string): string {
-        const messages = {
+        const messages: LoadingMessages = {
             chat: "Thinking...",
             code: "Analyzing code...",
             review: "Reviewing code...",
             test: "Generating tests...",
         };
-        return messages[mode] || "Processing...";
+        
+        if (mode in messages) {
+            return messages[mode as keyof LoadingMessages];
+        }
+        
+        return "Processing...";
     }
 
     private formatAgentResponse(response: any): string {

@@ -91,12 +91,21 @@ export class MessageHandler {
                 case "addToMemory":
                     this.handleAddToMemory(message.content);
                     break;
+                case "showMemories":
+                    this.handleShowMemories(message.memories);
+                    break;
                 default:
                     console.warn("Unknown message type:", message.type);
             }
         } catch (error) {
             this.handleError(error);
         }
+    }
+
+    private handleShowMemories(memories: any[]) {
+        // This will be handled by the client-side JavaScript in the webview
+        // The webview will receive the message and display the memories
+        console.log('Showing memories:', memories.length);
     }
 
     private async handleSendMessage(text: string, mode: string) {

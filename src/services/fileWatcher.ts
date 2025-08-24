@@ -74,7 +74,7 @@ export class FileWatcher {
     async onFileChanged(uri: vscode.Uri, memoryService: MemoryService): Promise<void> {
         try {
             const fileInfo = await this.getFileInfo(uri);
-            if (!fileInfo) return;
+            if (!fileInfo) {return;}
 
             const analysis = await this.analyzeFile(uri);
 
@@ -91,7 +91,7 @@ export class FileWatcher {
                     complexity: analysis.complexity,
                     potentialIssues: analysis.potentialIssues
                 },
-                timestamp: new Date().toISOString()
+                timestamp: new Date()
             });
 
             // Trigger analysis if enabled
@@ -180,7 +180,7 @@ export class FileWatcher {
                 taskId: `analysis_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 result: analysis,
                 summary: `File analysis for ${uri.fsPath}: ${analysis.potentialIssues.length} issues found, complexity: ${analysis.complexity}`,
-                timestamp: new Date().toISOString()
+                timestamp: new Date()
             });
 
             // Show notification if significant issues found
