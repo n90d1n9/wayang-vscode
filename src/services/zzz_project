@@ -1,0 +1,551 @@
+import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import { ProjectContext } from '../types/chatTypes';
+
+interface ProjectAnalysis {
+    totalFiles: number;
+    languages: Map<string, number>;
+    complexity: number;
+    codeQuality: number;
+    frameworks: string[];
+    buildTools: string[];
+    hasTests: boolean;
+    hasDocumentation: boolean;
+}
+
+export class ProjectService {
+    private projectContext: ProjectContext = {};
+
+    constructor() {
+        this.initializeProjectContext();
+    }
+
+    // Add the analyzeProject method with proper typing
+    async analyzeProject(): Promise<ProjectAnalysis> {
+        const analysis: ProjectAnalysis = {
+            totalFiles: 0,
+            languages: new Map<string, number>(),
+            complexity: 0,
+            codeQuality: 0,
+            frameworks: [],
+            buildTools: [],
+            hasTests: false,
+            hasDocumentation: false
+        };
+
+        try {
+            const files = await vscode.workspace.findFiles(
+                "**/*.{js,ts,java,py,go,rs,php,cs,cpp,c,html,css,json,xml,yaml,yml,md,txt,feature,test,spec}", 
+                "**/{node_modules,.git,build,dist,target,out,bin,obj}/**", 
+                100
+            );
+            
+            analysis.totalFiles = files.length;
+
+            // Analyze file types and frameworks
+            for (const file of files) {
+                const ext = path.extname(file.fsPath).substring(1).toLowerCase();
+                analysis.languages.set(ext, (analysis.languages.get(ext) || 0) + 1);
+                
+                // Check for test files
+                if (this.isTestFile(file.fsPath)) {
+                    analysis.hasTests = true;
+                }
+                
+                // Check for documentation
+                if (this.isDocumentationFile(file.fsPath)) {
+                    analysis.hasDocumentation = true;
+                }
+            }
+
+            // Detect frameworks and build tools
+            analysis.frameworks = this.detectFrameworks();
+            analysis.buildTools = this.detectBuildTools();
+
+            // Calculate metrics
+            analysis.complexity = this.calculateComplexity(analysis);
+            analysis.codeQuality = this.calculateCodeQuality(analysis);
+
+            return analysis;
+        } catch (error) {
+            console.error("Error analyzing project:", error);
+            return analysis;
+        }
+    }
+
+    private calculateComplexity(analysis: ProjectAnalysis): number {
+        // Simple complexity calculation based on file count and types
+        const codeFiles = Array.from(analysis.languages.values())
+            .reduce((sum: number, count: number) => sum + count, 0);
+        
+        return Math.min(codeFiles / 10, 10); // Scale complexity from 0-10
+    }
+
+    private calculateCodeQuality(analysis: ProjectAnalysis): number {
+        let quality = 5; // Base quality
+        
+        if (analysis.hasTests) quality += 3;
+        if (analysis.hasDocumentation) quality += 2;
+        if (analysis.frameworks.length > 0) quality += 1;
+        if (analysis.buildTools.length > 0) quality += 1;
+        
+        // Penalize for very large projects
+        if (analysis.totalFiles > 100) quality -= 1;
+        if (analysis.totalFiles > 500) quality -= 2;
+        
+        return Math.max(1, Math.min(quality, 10)); // Keep between 1-10
+    }
+
+    private isTestFile(filePath: string): boolean {
+        const testPatterns = [
+            /\.test\./,
+            /\.spec\./,
+            /test\./,
+            /_test\./,
+            /_spec\./,
+            /\/test\//,
+            /\/tests\//,
+            /\/__tests__\//,
+            /\/spec\//,
+            /\/specs\//
+        ];
+        
+        return testPatterns.some(pattern => pattern.test(filePath));
+    }
+
+    private isDocumentationFile(filePath: string): boolean {
+        const docPatterns = [
+            /\.md$/,
+            /\.txt$/,
+            /readme/i,
+            /license/i,
+            /changelog/i,
+            /contributing/i,
+            /\/docs?\//,
+            /\/documentation\//
+        ];
+        
+        return docPatterns.some(pattern => pattern.test(filePath.toLowerCase()));
+    }
+
+    private detectFrameworks(): string[] {
+        const frameworks: string[] = [];
+        const workspacePath = this.projectContext.workspacePath;
+        
+        if (!workspacePath) return frameworks;
+
+        // Java Frameworks
+        if (this.hasFile(workspacePath, 'pom.xml')) {
+            frameworks.push(...this.detectJavaFrameworks(workspacePath));
+        }
+        if (this.hasFile(workspacePath, 'build.gradle')) {
+            frameworks.push('Gradle');
+            frameworks.push(...this.detectJavaFrameworks(workspacePath));
+        }
+
+        // JavaScript/TypeScript Frameworks
+        if (this.hasFile(workspacePath, 'package.json')) {
+            frameworks.push(...this.detectJavascriptFrameworks(workspacePath));
+        }
+
+        // Python Frameworks
+        if (this.hasFile(workspacePath, 'requirements.txt') || this.hasFile(workspacePath, 'pyproject.toml')) {
+            frameworks.push(...this.detectPythonFrameworks(workspacePath));
+        }
+
+        // PHP Frameworks
+        if (this.hasFile(workspacePath, 'composer.json')) {
+            frameworks.push(...this.detectPhpFrameworks(workspacePath));
+        }
+
+        // .NET Frameworks
+        if (this.hasFile(workspacePath, '*.csproj') || this.hasFile(workspacePath, '*.sln')) {
+            frameworks.push(...this.detectDotNetFrameworks(workspacePath));
+        }
+
+        // Rust Frameworks
+        if (this.hasFile(workspacePath, 'Cargo.toml')) {
+            frameworks.push('Rust');
+        }
+
+        // Go Frameworks
+        if (this.hasFile(workspacePath, 'go.mod')) {
+            frameworks.push('Go');
+            frameworks.push(...this.detectGoFrameworks(workspacePath));
+        }
+
+        // Frontend Frameworks (additional detection)
+        frameworks.push(...this.detectFrontendFrameworks(workspacePath));
+
+        return Array.from(new Set(frameworks)); // Remove duplicates
+    }
+
+    private detectJavaFrameworks(workspacePath: string): string[] {
+        const frameworks: string[] = [];
+        
+        // Check for Spring Boot
+        if (this.hasFile(workspacePath, 'src/main/resources/application.properties') ||
+            this.hasFile(workspacePath, 'src/main/resources/application.yml')) {
+            frameworks.push('Spring Boot');
+        }
+
+        // Check for Quarkus
+        if (this.hasFile(workspacePath, 'src/main/resources/application.properties') &&
+            this.fileContains(workspacePath, 'pom.xml', 'quarkus')) {
+            frameworks.push('Quarkus');
+        }
+
+        // Check for Micronaut
+        if (this.fileContains(workspacePath, 'pom.xml', 'micronaut') ||
+            this.fileContains(workspacePath, 'build.gradle', 'micronaut')) {
+            frameworks.push('Micronaut');
+        }
+
+        // Check for Jakarta EE
+        if (this.fileContains(workspacePath, 'pom.xml', 'jakarta') ||
+            this.fileContains(workspacePath, 'pom.xml', 'javax')) {
+            frameworks.push('Jakarta EE');
+        }
+
+        return frameworks;
+    }
+
+    private detectJavascriptFrameworks(workspacePath: string): string[] {
+        const frameworks: string[] = [];
+        
+        try {
+            const packageJsonPath = path.join(workspacePath, 'package.json');
+            if (fs.existsSync(packageJsonPath)) {
+                const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+                
+                // Check dependencies for frameworks
+                const allDeps = {
+                    ...packageJson.dependencies,
+                    ...packageJson.devDependencies
+                };
+
+                const frameworkDependencies: { [key: string]: string } = {
+                    'react': 'React',
+                    'vue': 'Vue.js',
+                    'angular': 'Angular',
+                    'svelte': 'Svelte',
+                    'next': 'Next.js',
+                    'nuxt': 'Nuxt.js',
+                    'express': 'Express.js',
+                    'koa': 'Koa',
+                    'nest': 'NestJS',
+                    'adonisjs': 'AdonisJS',
+                    'meteor': 'Meteor',
+                    'ember': 'Ember.js',
+                    'backbone': 'Backbone.js',
+                    'redux': 'Redux',
+                    'mobx': 'MobX',
+                    'jest': 'Jest',
+                    'mocha': 'Mocha',
+                    'chai': 'Chai',
+                    'cypress': 'Cypress',
+                    'playwright': 'Playwright',
+                    'webpack': 'Webpack',
+                    'vite': 'Vite',
+                    'rollup': 'Rollup',
+                    'parcel': 'Parcel',
+                    'typescript': 'TypeScript'
+                };
+
+                Object.keys(allDeps).forEach(dep => {
+                    if (frameworkDependencies[dep]) {
+                        frameworks.push(frameworkDependencies[dep]);
+                    }
+                });
+
+                // Check for Deno
+                if (this.hasFile(workspacePath, 'deno.json') || this.hasFile(workspacePath, 'deno.lock')) {
+                    frameworks.push('Deno');
+                }
+
+                // Check for specific config files
+                if (this.hasFile(workspacePath, 'next.config.js') || this.hasFile(workspacePath, 'next.config.ts')) {
+                    frameworks.push('Next.js');
+                }
+                if (this.hasFile(workspacePath, 'nuxt.config.js') || this.hasFile(workspacePath, 'nuxt.config.ts')) {
+                    frameworks.push('Nuxt.js');
+                }
+            }
+        } catch (error) {
+            console.error('Error detecting JavaScript frameworks:', error);
+        }
+
+        return frameworks;
+    }
+
+    private detectPythonFrameworks(workspacePath: string): string[] {
+        const frameworks: string[] = [];
+        
+        try {
+            // Check requirements.txt
+            if (this.hasFile(workspacePath, 'requirements.txt')) {
+                const requirements = fs.readFileSync(path.join(workspacePath, 'requirements.txt'), 'utf8');
+                const pythonFrameworks: { [key: string]: string } = {
+                    'django': 'Django',
+                    'flask': 'Flask',
+                    'fastapi': 'FastAPI',
+                    'tornado': 'Tornado',
+                    'pyramid': 'Pyramid',
+                    'bottle': 'Bottle',
+                    'cherrypy': 'CherryPy',
+                    'sanic': 'Sanic',
+                    'aiohttp': 'AioHTTP',
+                    'requests': 'Requests',
+                    'numpy': 'NumPy',
+                    'pandas': 'Pandas',
+                    'tensorflow': 'TensorFlow',
+                    'pytorch': 'PyTorch',
+                    'scikit-learn': 'Scikit-learn',
+                    'pytest': 'Pytest',
+                    'unittest': 'unittest'
+                };
+
+                Object.keys(pythonFrameworks).forEach(pkg => {
+                    if (requirements.toLowerCase().includes(pkg.toLowerCase())) {
+                        frameworks.push(pythonFrameworks[pkg]);
+                    }
+                });
+            }
+
+            // Check for specific framework files
+            if (this.hasFile(workspacePath, 'manage.py')) frameworks.push('Django');
+            if (this.hasFile(workspacePath, 'app.py') && this.fileContains(workspacePath, 'app.py', 'flask')) {
+                frameworks.push('Flask');
+            }
+        } catch (error) {
+            console.error('Error detecting Python frameworks:', error);
+        }
+
+        return frameworks;
+    }
+
+    private detectPhpFrameworks(workspacePath: string): string[] {
+        const frameworks: string[] = [];
+        
+        try {
+            if (this.hasFile(workspacePath, 'composer.json')) {
+                const composerJson = JSON.parse(fs.readFileSync(path.join(workspacePath, 'composer.json'), 'utf8'));
+                
+                const phpFrameworks: { [key: string]: string } = {
+                    'laravel': 'Laravel',
+                    'symfony': 'Symfony',
+                    'cakephp': 'CakePHP',
+                    'codeigniter': 'CodeIgniter',
+                    'yii': 'Yii',
+                    'zend': 'Zend Framework',
+                    'slim': 'Slim',
+                    'lumen': 'Lumen'
+                };
+
+                const allDeps = {
+                    ...composerJson.require,
+                    ...composerJson['require-dev']
+                };
+
+                Object.keys(allDeps || {}).forEach(dep => {
+                    if (phpFrameworks[dep]) {
+                        frameworks.push(phpFrameworks[dep]);
+                    }
+                });
+
+                // Check for framework-specific files
+                if (this.hasFile(workspacePath, 'artisan')) frameworks.push('Laravel');
+                if (this.hasFile(workspacePath, 'bin/console')) frameworks.push('Symfony');
+            }
+        } catch (error) {
+            console.error('Error detecting PHP frameworks:', error);
+        }
+
+        return frameworks;
+    }
+
+    private detectDotNetFrameworks(workspacePath: string): string[] {
+        const frameworks: string[] = [];
+        
+        try {
+            // Look for .csproj files
+            const csprojFiles = fs.readdirSync(workspacePath)
+                .filter(file => file.endsWith('.csproj'));
+            
+            for (const csprojFile of csprojFiles) {
+                const content = fs.readFileSync(path.join(workspacePath, csprojFile), 'utf8');
+                
+                if (content.includes('Microsoft.NET.Sdk.Web')) {
+                    frameworks.push('ASP.NET Core');
+                }
+                if (content.includes('Microsoft.NET.Sdk.BlazorWebAssembly')) {
+                    frameworks.push('Blazor WebAssembly');
+                }
+                if (content.includes('Xamarin')) {
+                    frameworks.push('Xamarin');
+                }
+                if (content.includes('EntityFramework')) {
+                    frameworks.push('Entity Framework');
+                }
+            }
+
+            // Check for specific framework files
+            if (this.hasFile(workspacePath, 'Startup.cs')) frameworks.push('ASP.NET Core');
+            if (this.hasFile(workspacePath, 'Program.cs') && this.fileContains(workspacePath, 'Program.cs', 'WebApplication')) {
+                frameworks.push('ASP.NET Core 6+');
+            }
+        } catch (error) {
+            console.error('Error detecting .NET frameworks:', error);
+        }
+
+        return frameworks;
+    }
+
+    private detectGoFrameworks(workspacePath: string): string[] {
+        const frameworks: string[] = [];
+        
+        try {
+            // Check go.mod for popular Go frameworks
+            if (this.hasFile(workspacePath, 'go.mod')) {
+                const goMod = fs.readFileSync(path.join(workspacePath, 'go.mod'), 'utf8');
+                
+                const goFrameworks: { [key: string]: string } = {
+                    'gin': 'Gin',
+                    'echo': 'Echo',
+                    'fiber': 'Fiber',
+                    'gorilla/mux': 'Gorilla Mux',
+                    'beego': 'Beego',
+                    'revel': 'Revel',
+                    'chi': 'Chi',
+                    'kit': 'Go Kit',
+                    'micro': 'Micro',
+                    'gorm': 'GORM',
+                    'xorm': 'XORM'
+                };
+
+                Object.keys(goFrameworks).forEach(pkg => {
+                    if (goMod.includes(pkg)) {
+                        frameworks.push(goFrameworks[pkg]);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error detecting Go frameworks:', error);
+        }
+
+        return frameworks;
+    }
+
+    private detectFrontendFrameworks(workspacePath: string): string[] {
+        const frameworks: string[] = [];
+        
+        // Check for various frontend framework indicators
+        const frontendIndicators: { [key: string]: string } = {
+            'angular.json': 'Angular',
+            'vue.config.js': 'Vue.js',
+            'svelte.config.js': 'Svelte',
+            'ember-cli-build.js': 'Ember.js',
+            'astro.config.js': 'Astro',
+            'svelte-kit.config.js': 'SvelteKit',
+            'remix.config.js': 'Remix',
+            'vite.config.js': 'Vite',
+            'webpack.config.js': 'Webpack',
+            'rollup.config.js': 'Rollup',
+            'tailwind.config.js': 'Tailwind CSS',
+            'postcss.config.js': 'PostCSS',
+            'babel.config.js': 'Babel'
+        };
+
+        Object.keys(frontendIndicators).forEach(file => {
+            if (this.hasFile(workspacePath, file)) {
+                frameworks.push(frontendIndicators[file]);
+            }
+        });
+
+        return frameworks;
+    }
+
+    private detectBuildTools(): string[] {
+        const buildTools: string[] = [];
+        const workspacePath = this.projectContext.workspacePath;
+        
+        if (!workspacePath) return buildTools;
+
+        // Common build tools
+        const buildToolFiles: { [key: string]: string } = {
+            'pom.xml': 'Maven',
+            'build.gradle': 'Gradle',
+            'build.gradle.kts': 'Gradle Kotlin',
+            'package.json': 'npm/yarn/pnpm',
+            'Makefile': 'Make',
+            'CMakeLists.txt': 'CMake',
+            'docker-compose.yml': 'Docker Compose',
+            'docker-compose.yaml': 'Docker Compose',
+            'Dockerfile': 'Docker',
+            'webpack.config.js': 'Webpack',
+            'vite.config.js': 'Vite',
+            'rollup.config.js': 'Rollup',
+            'tsconfig.json': 'TypeScript Compiler',
+            'babel.config.js': 'Babel',
+            '.github/workflows': 'GitHub Actions',
+            '.gitlab-ci.yml': 'GitLab CI',
+            '.travis.yml': 'Travis CI',
+            'Jenkinsfile': 'Jenkins',
+            'azure-pipelines.yml': 'Azure Pipelines'
+        };
+
+        Object.keys(buildToolFiles).forEach(file => {
+            if (this.hasFile(workspacePath, file)) {
+                buildTools.push(buildToolFiles[file]);
+            }
+        });
+
+        // Check for specific package managers
+        if (this.hasFile(workspacePath, 'yarn.lock')) buildTools.push('Yarn');
+        if (this.hasFile(workspacePath, 'pnpm-lock.yaml')) buildTools.push('pnpm');
+        if (this.hasFile(workspacePath, 'package-lock.json')) buildTools.push('npm');
+
+        return Array.from(new Set(buildTools));
+    }
+
+    private hasFile(workspacePath: string, pattern: string): boolean {
+        try {
+            if (pattern.includes('*')) {
+                // Handle glob patterns
+                const files = fs.readdirSync(workspacePath);
+                return files.some(file => file.match(new RegExp(pattern.replace('*', '.*'))));
+            }
+            
+            // Handle directory patterns
+            if (pattern.includes('/')) {
+                return fs.existsSync(path.join(workspacePath, pattern));
+            }
+            
+            // Simple file check
+            return fs.existsSync(path.join(workspacePath, pattern));
+        } catch (error) {
+            return false;
+        }
+    }
+
+    private fileContains(workspacePath: string, filePattern: string, searchText: string): boolean {
+        try {
+            const files = fs.readdirSync(workspacePath);
+            const matchingFiles = files.filter(file => file.match(new RegExp(filePattern.replace('*', '.*'))));
+            
+            for (const file of matchingFiles) {
+                const content = fs.readFileSync(path.join(workspacePath, file), 'utf8');
+                if (content.toLowerCase().includes(searchText.toLowerCase())) {
+                    return true;
+                }
+            }
+            
+            return false;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    // ... rest of your existing ProjectService methods ...
+}

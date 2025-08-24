@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { AgentClient } from '../clients/agentClient';
-import { ChatMessage, ProjectContext } from '../types/chatTypes';
+import { ChatMessage } from '../types/chatTypes';
 
 export class ChatService {
     private chatHistory: ChatMessage[] = [];
@@ -93,6 +93,24 @@ export class ChatService {
         }
     }
 
+    stopGeneration() {
+        if (this.currentStreamMessageId) {
+            const messageIndex = this.chatHistory.findIndex(
+                msg => msg.id === this.currentStreamMessageId
+            );
+            
+            if (messageIndex !== -1) {
+                this.chatHistory[messageIndex] = {
+                    ...this.chatHistory[messageIndex],
+                    content: this.chatHistory[messageIndex].content + "\n\n*Generation stopped by user*",
+                    loading: false,
+                };
+            }
+            
+            this.currentStreamMessageId = undefined;
+        }
+    }
+
     private getLoadingMessage(mode: string): string {
         const messages = {
             chat: "Thinking...",
@@ -104,8 +122,45 @@ export class ChatService {
     }
 
     private formatAgentResponse(response: any): string {
-        // ... implementation from your original code
-        return response.message || "Task completed";
+        let content = response.message || "Task completed";
+
+        if (response.confidence) {
+            const confidenceEmoji = response.confidence > 0.8 ? "🟢" : 
+                                   response.confidence > 0.6 ? "🟡" : "🔴";
+            content = `${confidenceEmoji} (${Math.round(response.confidence * 100)}% confidence)\n\n${content}`;
+        }
+
+        if (response.data?.codeChanges) {
+            content += "\n\n**📝 Code Changes:**";
+            response.data.codeChanges.forEach((change: any, index: number) => {
+                content += `\n\n${index + 1}. **${change.file}** (${change.type || 'modify'})`;
+                content += `\n\`\`\`${change.language || "text"}\n${change.content}\n\`\`\``;
+                if (change.explanation) {
+                    content += `\n*${change.explanation}*`;
+                }
+            });
+        }
+
+        if (response.data?.analysis) {
+            content += "\n\n**📊 Analysis Results:**";
+            content += `\n${response.data.analysis.summary}`;
+        }
+
+        if (response.data?.suggestions) {
+            content += "\n\n**💭 Suggestions:**";
+            response.data.suggestions.forEach((suggestion: string, index: number) => {
+                content += `\n${index + 1}. ${suggestion}`;
+            });
+        }
+
+        if (response.sources?.length > 0) {
+            content += "\n\n**📚 Sources:**";
+            response.sources.forEach((source: string, index: number) => {
+                content += `\n${index + 1}. ${source}`;
+            });
+        }
+
+        return content;
     }
 
     // Getters and setters
@@ -127,5 +182,9 @@ export class ChatService {
 
     setIsStreaming(streaming: boolean) {
         this.isStreaming = streaming;
+    }
+
+    getCurrentStreamMessageId(): string | undefined {
+        return this.currentStreamMessageId;
     }
 }
