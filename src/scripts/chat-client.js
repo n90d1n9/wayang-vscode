@@ -1,4 +1,5 @@
 // Client-side JavaScript that will be injected into the webview
+// scripts/client-script.js
 class ChatClient {
     constructor() {
         this.vscode = acquireVsCodeApi();
@@ -11,21 +12,22 @@ class ChatClient {
         this.projectContext = {};
         this.searchResults = [];
         this.messageIdCounter = 0;
-        
+        this.isToolbarVisible = false;
+
         this.initialize();
     }
 
     initialize() {
         this.setupEventListeners();
+        this.setupLayout();
         this.updateSendButton();
         this.setMode('chat');
         this.updateStreamToggle();
-        
+
         // Focus input after initialization
         setTimeout(() => {
             const input = document.getElementById('messageInput');
-            if (input) {
-                input.focus();}
+            if (input) {input.focus();}
         }, 500);
     }
 
@@ -58,6 +60,54 @@ class ChatClient {
 
         // Global keyboard shortcuts
         document.addEventListener('keydown', this.handleGlobalKeydown.bind(this));
+
+        // Handle messages from extension
+        window.addEventListener('message', this.handleExtensionMessage.bind(this));
+    }
+
+    setupLayout() {
+        // Hide toolbar by default
+        this.toggleToolbar(false);
+        
+        // Add hover effect to show toolbar
+        const header = document.querySelector('.header');
+        if (header) {
+            header.addEventListener('mouseenter', () => this.toggleToolbar(true));
+            header.addEventListener('mouseleave', () => this.toggleToolbar(false));
+        }
+    }
+
+    toggleToolbar(show) {
+        const toolbar = document.querySelector('.toolbar');
+        if (toolbar) {
+            toolbar.style.display = show ? 'flex' : 'none';
+            this.isToolbarVisible = show;
+        }
+    }
+
+    handleExtensionMessage(event) {
+        const message = event.data;
+        
+        switch (message.type) {
+            case 'updateChat':
+                this.updateChatMessages(message.messages);
+                break;
+            case 'updateSessions':
+                this.updateSessions(message.sessions);
+                break;
+            case 'showMemories':
+                this.showMemories(message.memories);
+                break;
+            case 'modeChanged':
+                this.setMode(message.mode);
+                break;
+            case 'searchResults':
+                this.showSearchResults(message.results, message.query);
+                break;
+            case 'projectContextUpdated':
+                this.updateProjectContext(message.context);
+                break;
+        }
     }
 
     handleInput(event) {
@@ -65,17 +115,6 @@ class ChatClient {
         // Auto-resize
         input.style.height = 'auto';
         input.style.height = Math.min(input.scrollHeight, 150) + 'px';
-        
-        // Word count and character limit
-        const wordCount = input.value.trim().split(/\s+/).length;
-        const charCount = input.value.length;
-        
-        // Show word count for long messages
-        if (charCount > 100) {
-            input.title = `${wordCount} words, ${charCount} characters`;
-        } else {
-            input.title = '';
-        }
     }
 
     handleKeydown(event) {
@@ -109,9 +148,7 @@ class ChatClient {
                 this.searchHistory(event.target.value);
             } else {
                 const resultsDiv = document.getElementById('searchResults');
-                if (resultsDiv) {
-                    resultsDiv.innerHTML = '';
-                };
+                if (resultsDiv) {resultsDiv.innerHTML = '';}
             }
         }, 300);
     }
@@ -131,20 +168,185 @@ class ChatClient {
                         this.showExportMenu();
                     }
                     break;
-                case 'ArrowUp':
-                    event.preventDefault();
-                    this.navigateMessages(-1);
-                    break;
-                case 'ArrowDown':
-                    event.preventDefault();
-                    this.navigateMessages(1);
-                    break;
             }
         }
     }
 
-    // ... all the other methods from your original script
-    // (sendMessage, setMode, updateStatus, etc.)
+    // Core functionality methods
+    sendMessage() {
+        const input = document.getElementById('messageInput');
+        const message = input.value.trim();
+
+        if (!message || this.isWaitingForResponse) {return;}
+
+        this.vscode.postMessage({
+            type: 'sendMessage',
+            text: message,
+            mode: this.currentMode
+        });
+
+        input.value = '';
+        input.style.height = 'auto';
+        this.isWaitingForResponse = true;
+        this.updateSendButton();
+    }
+
+    setMode(mode) {
+        this.currentMode = mode;
+        
+        // Update mode buttons
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.mode === mode);
+        });
+
+        // Update input placeholder
+        const input = document.getElementById('messageInput');
+        const modeIndicator = document.getElementById('currentMode');
+        
+        const modeConfig = {
+            chat: { placeholder: 'Ask me anything about your code...', indicator: '💬 Chat Mode' },
+            code: { placeholder: 'Describe the code you want to generate...', indicator: '💻 Code Mode' },
+            review: { placeholder: 'Ask me to review your code...', indicator: '🔍 Review Mode' },
+            test: { placeholder: 'Request test generation...', indicator: '🧪 Test Mode' }
+        };
+
+        const config = modeConfig[mode] || modeConfig.chat;
+        if (input) {input.placeholder = config.placeholder;}
+        if (modeIndicator) {modeIndicator.textContent = config.indicator;}
+    }
+
+    setModeAndFocus(mode) {
+        this.setMode(mode);
+        const input = document.getElementById('messageInput');
+        if (input) {input.focus();}
+    }
+
+    updateChatMessages(messages) {
+        const chatMessages = document.getElementById('chatMessages');
+        if (!chatMessages) {return;}
+
+        // Clear existing messages
+        chatMessages.innerHTML = '';
+
+        if (messages.length === 0) {
+            // Show welcome message if no messages
+            const welcomeMessage = document.createElement('div');
+            welcomeMessage.className = 'welcome-message';
+            welcomeMessage.innerHTML = `
+                <h3>🎭 Welcome to Wayang Code!</h3>
+                <p>Your intelligent coding companion</p>
+            `;
+            chatMessages.appendChild(welcomeMessage);
+            return;
+        }
+
+        messages.forEach(msg => {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${msg.type}`;
+            if (msg.loading) {messageDiv.classList.add('loading');}
+            if (msg.error) {messageDiv.classList.add('error');}
+
+            messageDiv.innerHTML = `
+                <div class="message-header">
+                    <span>${msg.type === 'user' ? '👤 You' : '🤖 Wayang Code'}</span>
+                    ${msg.loading ? '<span class="loading-indicator">⚙️</span>' : ''}
+                </div>
+                <div class="message-content">${this.formatMessageContent(msg.content)}</div>
+            `;
+
+            chatMessages.appendChild(messageDiv);
+        });
+
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        this.isWaitingForResponse = messages.some(msg => msg.loading);
+        this.updateSendButton();
+    }
+
+    formatMessageContent(content) {
+        return content
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+            .replace(/`(.*?)`/g, '<code>$1</code>')
+            .replace(/\n/g, '<br>');
+    }
+
+    updateSendButton() {
+        const sendButton = document.getElementById('sendButton');
+        if (!sendButton) {return;}
+
+        sendButton.disabled = this.isWaitingForResponse;
+        sendButton.textContent = this.isWaitingForResponse ? 'Sending...' : 'Send';
+    }
+
+    clearChat() {
+        if (confirm('Clear this conversation?')) {
+            this.vscode.postMessage({ type: 'clearChat' });
+        }
+    }
+
+    showMemories(memories) {
+        const chatMessages = document.getElementById('chatMessages');
+        if (!chatMessages) {return;}
+
+        // Remove existing memories
+        const existingMemories = chatMessages.querySelector('.memories-section');
+        if (existingMemories) {existingMemories.remove();}
+
+        if (memories && memories.length > 0) {
+            const memoriesDiv = document.createElement('div');
+            memoriesDiv.className = 'memories-section';
+            
+            memoriesDiv.innerHTML = `
+                <div class="memories-header">
+                    <strong>🧠 Recent Memory Context (${memories.length})</strong>
+                </div>
+                <div class="memories-list">
+                    ${memories.map(memory => `
+                        <div class="memory-item">
+                            <span class="memory-content">${this.escapeHtml(memory.query || memory.summary)}</span>
+                            <span class="memory-timestamp">${this.formatTimeAgo(memory.timestamp)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            chatMessages.insertBefore(memoriesDiv, chatMessages.firstChild);
+        }
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    formatTimeAgo(timestamp) {
+        const now = new Date();
+        const time = new Date(timestamp);
+        const diff = now - time;
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        const days = Math.floor(diff / 86400000);
+
+        if (minutes < 1) {return 'now';}
+        if (minutes < 60) {return `${minutes}m ago`;}
+        if (hours < 24) {return `${hours}h ago`;}
+        return `${days}d ago`;
+    }
+
+    // Add other methods as needed...
+    toggleSearch() { /* implementation */ }
+    searchHistory(query) { /* implementation */ }
+    createNewSession() { /* implementation */ }
+    saveSettings() { /* implementation */ }
+    updateStreamToggle() { /* implementation */ }
+    updateProjectContext(context) { /* implementation */ }
+    updateSessions(sessions) { /* implementation */ }
+    showSearchResults(results, query) { /* implementation */ }
+    showExportMenu() { /* implementation */ }
+    saveConversation() { /* implementation */ }
 }
 
 // Initialize when DOM is loaded
