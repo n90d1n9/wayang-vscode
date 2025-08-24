@@ -1,38 +1,30 @@
-import { Uri, Webview } from "vscode";
-import * as vscode from "vscode";
-import * as fs from "fs";
-import * as path from "path";
+// components/chat_panel.ts
+import * as vscode from 'vscode';
+import { Header } from './header';
 
-import { Header } from "./header";
-import { StatusBar } from "./statusBar";
-import { InputArea } from "./inputArea";
-import { Messages } from "./messages";
-import { SessionsPanel } from "./sessionPanel";
-import { Toolbar } from "./toolbar";
-import { getCleanStyles } from "./styles";
+import { Messages } from './messages';
+import { InputArea } from './inputArea';
+import { StatusBar } from './statusBar';
+import { Toolbar } from './toolbar';
+import { SessionsPanel } from './sessionPanel';
 
 export class ChatPanel {
-    private webview: Webview;
+    private webview: vscode.Webview;
+    private extensionUri: vscode.Uri;
     private state: any;
-    private extensionUri: Uri;
 
-    constructor(
-        webview: vscode.Webview,
-        extensionUri: vscode.Uri,
-        initialState: any = {},
-    ) {
+    constructor(webview: vscode.Webview, extensionUri: vscode.Uri, initialState: any = {}) {
         this.webview = webview;
         this.extensionUri = extensionUri;
-        this.state = initialState;
-    }
-
-    public updateState(newState: any): void {
-        this.state = { ...this.state, ...newState };
+        this.state = { 
+            mode: 'chat',
+            messages: [],
+            sessions: [],
+            ...initialState 
+        };
     }
 
     public render(): string {
-        //const scriptUri = this.getScript(); // this.getWebviewUri('src/scripts/client-script.js');
-        const scriptUri = this.getWebviewUri("src/scripts/client-script.js");
         return `
             <!DOCTYPE html>
             <html lang="en">
@@ -41,7 +33,7 @@ export class ChatPanel {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Wayang Code Chat</title>
                 <style>
-                    ${getCleanStyles()}
+                    ${this.getStyles()}
                 </style>
             </head>
             <body>
@@ -52,7 +44,6 @@ export class ChatPanel {
                         <div class="sidebar">
                             ${new SessionsPanel().render(this.state)}
                             ${this.getProjectContext()}
-                            ${new Toolbar().render(this.state)}
                         </div>
                         
                         <div class="chat-area">
@@ -66,9 +57,200 @@ export class ChatPanel {
                     ${new StatusBar().render(this.state)}
                 </div>
                 
-                <script src="${this.getClientScript()}"></script>
+                <script>
+                    ${this.getClientScript()}
+                </script>
             </body>
             </html>`;
+    }
+
+    private getStyles(): string {
+        return `
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { 
+                font-family: var(--vscode-font-family);
+                font-size: var(--vscode-font-size);
+                color: var(--vscode-foreground);
+                background: var(--vscode-editor-background);
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .chat-container {
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+            }
+            
+            .main-content {
+                display: flex;
+                flex: 1;
+                overflow: hidden;
+            }
+            
+            .sidebar {
+                width: 250px;
+                background: var(--vscode-sideBar-background);
+                border-right: 1px solid var(--vscode-sideBar-border);
+                overflow-y: auto;
+            }
+            
+            .chat-area {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                min-width: 0;
+            }
+            
+            .chat-messages {
+                flex: 1;
+                overflow-y: auto;
+                padding: 16px;
+            }
+            
+            .header {
+                background: var(--vscode-titleBar-activeBackground);
+                padding: 12px 16px;
+                border-bottom: 1px solid var(--vscode-titleBar-border);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .session-info {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+            
+            .session-name {
+                font-weight: 600;
+                color: var(--vscode-titleBar-activeForeground);
+            }
+            
+            .session-status {
+                font-size: 0.85em;
+                opacity: 0.8;
+                color: var(--vscode-titleBar-activeForeground);
+            }
+            
+            .mode-selector {
+                display: flex;
+                background: var(--vscode-button-secondaryBackground);
+                padding: 4px;
+                border-radius: 6px;
+                gap: 2px;
+            }
+            
+            .mode-btn {
+                padding: 6px 12px;
+                border: none;
+                border-radius: 4px;
+                background: transparent;
+                color: var(--vscode-button-secondaryForeground);
+                cursor: pointer;
+                font-size: 0.9em;
+            }
+            
+            .mode-btn.active {
+                background: var(--vscode-button-background);
+                color: var(--vscode-button-foreground);
+            }
+            
+            .project-context {
+                background: var(--vscode-badge-background);
+                color: var(--vscode-badge-foreground);
+                padding: 10px 12px;
+                font-size: 0.8em;
+                border-bottom: 1px solid var(--vscode-widget-border);
+            }
+            
+            .input-container {
+                padding: 16px;
+                background: var(--vscode-input-background);
+                border-top: 1px solid var(--vscode-input-border);
+            }
+            
+            .message-input {
+                width: 100%;
+                padding: 12px;
+                border: 1px solid var(--vscode-input-border);
+                border-radius: 6px;
+                background: var(--vscode-input-background);
+                color: var(--vscode-input-foreground);
+                font-family: inherit;
+                resize: none;
+                min-height: 40px;
+                margin-bottom: 8px;
+            }
+            
+            .input-bottom {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .send-button {
+                padding: 8px 16px;
+                background: var(--vscode-button-background);
+                color: var(--vscode-button-foreground);
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            
+            .status-bar {
+                background: var(--vscode-statusBar-background);
+                color: var(--vscode-statusBar-foreground);
+                padding: 6px 12px;
+                font-size: 0.8em;
+                border-top: 1px solid var(--vscode-statusBar-border);
+                display: flex;
+                justify-content: space-between;
+            }
+            
+            .message {
+                margin-bottom: 16px;
+                padding: 12px;
+                border-radius: 8px;
+                background: var(--vscode-input-background);
+                border: 1px solid var(--vscode-input-border);
+            }
+            
+            .message.user {
+                background: var(--vscode-inputOption-activeBackground);
+                margin-left: 20px;
+            }
+            
+            .message.assistant {
+                background: var(--vscode-editor-selectionBackground);
+                margin-right: 20px;
+            }
+            
+            .message-header {
+                font-weight: 600;
+                margin-bottom: 8px;
+                font-size: 0.9em;
+                opacity: 0.8;
+            }
+            
+            .welcome-message {
+                text-align: center;
+                padding: 40px 20px;
+                color: var(--vscode-descriptionForeground);
+            }
+            
+            @media (max-width: 768px) {
+                .main-content {
+                    flex-direction: column;
+                }
+                
+                .sidebar {
+                    width: 100%;
+                    max-height: 200px;
+                }
+            }
+        `;
     }
 
     private getClientScript(): string {
@@ -226,38 +408,15 @@ export class ChatPanel {
         `;
     }
 
-    private getScript(): string {
-        // Load the external client script
-        const scriptPath = path.join(
-            __dirname,
-            "..",
-            "scripts",
-            "chat-client.js",
-        );
-        try {
-            return fs.readFileSync(scriptPath, "utf8");
-        } catch (error) {
-            console.error("Error loading client script:", error);
-            return `
-        // Fallback minimal script
-        const vscode = acquireVsCodeApi();
-        console.log('Chat panel initialized');
-      `;
-        }
-    }
-
-    private getWebviewUri(relativePath: string): string {
-        const filePath = path.join(this.extensionUri.fsPath, relativePath);
-        return this.webview.asWebviewUri(Uri.file(filePath)).toString();
-    }
-
     private getProjectContext(): string {
         return `
-      <div class="project-context" id="projectContext">
-          <span id="contextInfo">Loading project context...</span>
-          <button class="context-toggle" onclick="toggleProjectContext()">
-              <span id="contextToggle">📋 Hide</span>
-          </button>
-      </div>`;
+            <div class="project-context">
+                <span id="contextInfo">Loading project context...</span>
+            </div>
+        `;
+    }
+
+    public updateState(newState: any): void {
+        this.state = { ...this.state, ...newState };
     }
 }
