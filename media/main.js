@@ -1,7 +1,7 @@
 const vscode = acquireVsCodeApi();
 document.addEventListener("DOMContentLoaded", () => {
   const app = document.getElementById("app");
-  if (!app) return;
+  if (!app) {return;}
 
   app.innerHTML = `
     <div style="padding: 16px; font-family: sans-serif;">
@@ -46,7 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   sendBtn.addEventListener("click", () => {
     const text = input.value.trim();
-    if (!text) return;
+    if (!text) {return;}
     addMessage("You", text);
     vscode.postMessage({ type: "userMessage", text });
     input.value = "";
