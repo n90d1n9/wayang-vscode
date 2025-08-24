@@ -140,7 +140,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Register status bar
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    statusBarItem.text = '$(robot) Coding Agent';
+    statusBarItem.text = '$(robot) Wayang Code';
     statusBarItem.command = 'wayang.sendQuery';
     statusBarItem.tooltip = 'Click to send a query to the coding agent';
     statusBarItem.show();
@@ -148,16 +148,17 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Initialize connection to backend
     agentClient.initialize().then(() => {
-        vscode.window.showInformationMessage('Coding Agent backend connected successfully');
+        vscode.window.showInformationMessage('Wayang Code backend connected successfully');
         statusBarItem.text = '$(robot) Agent Ready';
         statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.prominentBackground');
     }).catch((error) => {
-        vscode.window.showErrorMessage(`Failed to connect to Coding Agent backend: ${error.message}`);
+        vscode.window.showErrorMessage(`Failed to connect to Wayang Code backend: ${error.message}`);
         statusBarItem.text = '$(error) Agent Offline';
         statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
     });
 }
 
+
 export function deactivate() {
-    console.log('Coding Agent Extension is now deactivated');
+    console.log('Wayang Code Extension is now deactivated');
 }

@@ -1,3 +1,26 @@
+
+
+
+## Development Mode
+fn + F5
+
+
+🔑 Breakdown
+"viewsContainers.activitybar" → defines a new icon in the Activity Bar.
+id = internal identifier ("wayang")
+title = label shown on hover ("Wayang")
+icon = a 32×32 SVG or PNG in your media/ folder
+"views.wayang" → attaches panels to that container.
+"wayangTasks" will be your tree view (what you have in WayangProvider)
+"wayangChat" could be another panel for your chat UI
+
+🚀 Steps to test
+Edit your extension’s package.json to include the above.
+Run pnpm run watch (or however you start your extension build).
+In VS Code, press Fn+F5 (launch extension in Dev mode).
+You should now see a new Wayang icon in the left Activity Bar.
+Inside it, two collapsible sections: Tasks and Chat.
+
 Creating a **Visual Studio Code (VS Code) extension** involves setting up a project, writing extension logic (in TypeScript or JavaScript), and packaging it. Here’s a complete step-by-step guide:
 
 ---
@@ -178,7 +201,7 @@ After installation:
 
 1. Reload VS Code (it usually prompts you).
 2. Open the **Command Palette**.
-3. Run the command(s) you defined in `package.json` → e.g. `Start Coding Agent`.
+3. Run the command(s) you defined in `package.json` → e.g. `Start Wayang Code`.
 4. If your extension contributes panels, views, or menus, they should now appear.
 
 ---

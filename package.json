@@ -10,51 +10,53 @@
   "categories": [
     "Other"
   ],
-
-"activationEvents": [
+  "activationEvents": [
     "onCommand:wayang.sendQuery",
-    "onCommand:wayang.analyzeFile",
-    "onCommand:wayang.generateTests",
-    "onCommand:wayang.explainCode",
-    "onCommand:wayang.refactorCode",
-    "onCommand:wayang.findAndFix",
-    "onCommand:wayang.clearMemory",
-    "onCommand:wayang.showMemory",
-    "onCommand:wayang.configure",
-    "onCommand:wayang.refreshTasks",
-    "onCommand:wayang.cancelTask",
-    "onView:wayangTasks",
-    "onView:wayangChat"
-  ],
+  "onCommand:wayang.analyzeFile",
+  "onCommand:wayang.generateTests",
+  "onCommand:wayang.explainCode",
+  "onCommand:wayang.refactorCode",
+  "onCommand:wayang.findAndFix",
+  "onCommand:wayang.clearMemory",
+  "onCommand:wayang.showMemory",
+  "onCommand:wayang.configure",
+  "onCommand:wayang.refreshTasks",
+  "onCommand:wayang.cancelTask"
+],
   "contributes": {
     "commands": [
-      { "command": "wayang.sendQuery", "title": "Coding Agent: Send Query" },
-      { "command": "wayang.analyzeFile", "title": "Coding Agent: Analyze File" },
-      { "command": "wayang.generateTests", "title": "Coding Agent: Generate Tests" },
-      { "command": "wayang.explainCode", "title": "Coding Agent: Explain Code" },
-      { "command": "wayang.refactorCode", "title": "Coding Agent: Refactor Code" },
-      { "command": "wayang.findAndFix", "title": "Coding Agent: Find & Fix Issues" },
-      { "command": "wayang.clearMemory", "title": "Coding Agent: Clear Memory" },
-      { "command": "wayang.showMemory", "title": "Coding Agent: Show Memory" },
-      { "command": "wayang.configure", "title": "Coding Agent: Configure" },
-      { "command": "wayang.refreshTasks", "title": "Coding Agent: Refresh Tasks" },
-      { "command": "wayang.cancelTask", "title": "Coding Agent: Cancel Task" }
+      { "command": "wayang.sendQuery", "title": "Wayang Code: Send Query" },
+      { "command": "wayang.analyzeFile", "title": "Wayang Code: Analyze File" },
+      { "command": "wayang.generateTests", "title": "Wayang Code: Generate Tests" },
+      { "command": "wayang.explainCode", "title": "Wayang Code: Explain Code" },
+      { "command": "wayang.refactorCode", "title": "Wayang Code: Refactor Code" },
+      { "command": "wayang.findAndFix", "title": "Wayang Code: Find & Fix Issues" },
+      { "command": "wayang.clearMemory", "title": "Wayang Code: Clear Memory" },
+      { "command": "wayang.showMemory", "title": "Wayang Code: Show Memory" },
+      { "command": "wayang.configure", "title": "Wayang Code: Configure" },
+      { "command": "wayang.refreshTasks", "title": "Wayang Code: Refresh Tasks" },
+      { "command": "wayang.cancelTask", "title": "Wayang Code: Cancel Task" }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "wayang",
-          "title": "Coding Agent",
-          "icon": "media/agent-icon.svg"
+          "title": "Wayang",
+          "icon": "media/wayang-icon.png"
         }
       ]
     },
     "views": {
       "wayang": [
-        { "id": "wayangChat", "name": "Agent Chat" }
-      ],
-      "explorer": [
-        { "id": "wayangTasks", "name": "Agent Tasks" }
+        {
+          "id": "wayangTasks",
+          "name": "Tasks"
+        },
+        {
+          "id": "wayangChat",
+          "name": "Chat",
+          "type": "webview" 
+        }
       ]
     }
   },

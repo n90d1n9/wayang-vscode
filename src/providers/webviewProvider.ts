@@ -232,7 +232,7 @@ export class WayangWebviewProvider implements vscode.WebviewViewProvider {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Coding Agent Chat</title>
+            <title>Wayang Code Chat</title>
             <style>
                 body {
                     font-family: var(--vscode-font-family);
@@ -399,7 +399,7 @@ export class WayangWebviewProvider implements vscode.WebviewViewProvider {
                 
                 <div class="chat-messages" id="chatMessages">
                     <div class="message assistant">
-                        <div class="message-header">Coding Agent</div>
+                        <div class="message-header">Wayang Code</div>
                         <div class="message-content">
                             👋 Hi! I'm your coding agent. I can help you with:
                             <ul>
@@ -467,7 +467,7 @@ export class WayangWebviewProvider implements vscode.WebviewViewProvider {
                         
                         const headerDiv = document.createElement('div');
                         headerDiv.className = 'message-header';
-                        headerDiv.textContent = msg.type === 'user' ? 'You' : 'Coding Agent';
+                        headerDiv.textContent = msg.type === 'user' ? 'You' : 'Wayang Code';
                         if (msg.loading) {
                             headerDiv.innerHTML += ' <span class="loading-indicator">⚙️</span>';
                         }

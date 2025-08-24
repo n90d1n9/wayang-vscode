@@ -10,7 +10,7 @@ export interface MemoryItem {
 }
 
 export class MemoryService {
-    private static readonly MEMORY_KEY = 'codingAgent.memory';
+    private static readonly MEMORY_KEY = 'wayang.memory';
     private static readonly MAX_MEMORY_ITEMS = 100;
     
     private memoryCache: Map<string, MemoryItem> = new Map();
