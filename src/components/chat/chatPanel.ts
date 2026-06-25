@@ -1,10 +1,10 @@
 // src/components/chat/chatPanel.ts
 import * as vscode from "vscode";
-import { Header } from "./header";
-import { StatusBar } from "./statusBar";
-import { InputArea } from "./inputArea";
-import { Messages } from "./messages";
-import { SessionsPanel } from "./sessionPanel";
+import { Header } from "./Header";
+import { StatusBar } from "./StatusBar";
+import { InputArea } from "./InputArea";
+import { Messages } from "./Messages";
+import { SessionsPanel } from "./SessionPanel";
 import { Toolbar } from "./toolbar";
 import { getCleanStyles } from "./styles";
 import { SettingsPanel } from "./SettingsPanel";

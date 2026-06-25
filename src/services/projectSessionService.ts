@@ -185,7 +185,7 @@ export class ProjectSessionService {
         
         const sessionInfo = await this.createNewSession();
         sessionInfo.id = newSessionId;
-        sessionInfo.name = `${this.getSessionName(sessionId)} (Copy)`;
+        sessionInfo.name = `${this.getSessionNames().get(sessionId) || sessionId} (Copy)`;
         sessionInfo.messageCount = duplicatedMessages.length;
         
         this.currentSessionId = newSessionId;
