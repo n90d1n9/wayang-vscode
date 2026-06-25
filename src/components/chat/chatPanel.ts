@@ -1,6 +1,7 @@
+
 // src/components/chat/chatPanel.ts
 import * as vscode from "vscode";
-import { Header } from "./header";
+import { Header } from "./Header";
 import { StatusBar } from "./statusBar";
 import { InputArea } from "./inputArea";
 import { Messages } from "./messages";
@@ -25,16 +26,16 @@ export class ChatPanel {
   }
 
   // In ChatPanel.render()
-// In ChatPanel.render()
-public render(): string {
+  // In ChatPanel.render()
+  public render(): string {
     return `
         <div class="container">
             <header class="header">
                 ${new Header().render(this.state)}
             </header>
-            
+
             ${new SettingsPanel().render(this.state)}
-            
+
             <div class="chat-main">
                 <aside class="sidebar">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -64,7 +65,7 @@ public render(): string {
             </footer>
         </div>
     `;
-}
+  }
 
   // --- helpers ---
   private resourceUri(...segments: string[]): string {
