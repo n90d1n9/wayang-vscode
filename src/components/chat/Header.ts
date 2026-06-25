@@ -1,20 +1,20 @@
 export class Header {
-  render(state: any): string {
+    render(state: any): string {
         return `
             <div class="header">
                 <div class="session-info">
-                    <div class="session-name">${state.sessionName || 'Default Session'}</div>
-                    <div class="session-status">
-                        💬 ${state.messageCount || 0} messages
-                        ${state.isStreaming ? '<span class="streaming-indicator">🌊</span>' : ''}
-                    </div>
+                    <span class="session-name" id="sessionName">${state.sessionId || 'Default Session'}</span>
+                    <span class="session-status" id="sessionStatus">❌ ${state.messageCount || 0} messages</span>
                 </div>
                 <div class="mode-selector">
-                    <button class="mode-btn ${state.mode === 'chat' ? 'active' : ''}" data-mode="chat" title="Chat">💬</button>
-                    <button class="mode-btn ${state.mode === 'code' ? 'active' : ''}" data-mode="code" title="Code">💻</button>
-                    <button class="mode-btn ${state.mode === 'review' ? 'active' : ''}" data-mode="review" title="Review">🔍</button>
-                    <button class="mode-btn ${state.mode === 'test' ? 'active' : ''}" data-mode="test" title="Test">🧪</button>
+                    <button class="mode-btn" data-mode="chat" data-action="setMode">💬 Chat</button>
+                    <button class="mode-btn" data-mode="code" data-action="setMode">💻 Code</button>
+                    <button class="mode-btn" data-mode="review" data-action="setMode">🔍 Review</button>
+                    <button class="mode-btn" data-mode="test" data-action="setMode">🧪 Test</button>
                 </div>
+                <button class="header-btn" data-action="toggleContext" title="Toggle Project Context">
+                    📋 ${state.showContext ? 'Hide' : 'Show'} Context
+                </button>
             </div>
         `;
     }

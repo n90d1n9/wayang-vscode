@@ -15,14 +15,14 @@ export class SessionsPanel {
 
   private renderSessionItem(session: ChatSession): string {
     return `
-      <div class="session-item ${session.isActive ? 'active' : ''}" onclick="switchSession('${session.id}')">
+      <div class="session-item" data-session-id="${session.id}">
           <div class="session-name">${session.name}</div>
           <div class="session-meta">
               <span>${session.messageCount} msgs</span>
               <span>${this.formatTimeAgo(session.lastActivity)}</span>
               <div class="session-actions">
                   ${session.id !== 'default' ? `
-                    <button class="session-delete" onclick="deleteSession('${session.id}'); event.stopPropagation();" title="Delete Session">✕</button>
+                    <button class="session-delete" data-action="deleteSession" data-session-id="${session.id}" title="Delete Session">✕</button>
                   ` : ''}
               </div>
           </div>

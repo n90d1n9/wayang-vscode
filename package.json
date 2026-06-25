@@ -2,7 +2,7 @@
   "name": "wayang-code",
   "displayName": "Wayang Code",
   "description": "Wayang agent for coding",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "KayysTech",
   "engines": {
     "vscode": "^1.103.0"
@@ -13,30 +13,63 @@
   "activationEvents": [
     "onView:wayangChat",
     "onCommand:wayang.sendQuery",
-  "onCommand:wayang.analyzeFile",
-  "onCommand:wayang.generateTests",
-  "onCommand:wayang.explainCode",
-  "onCommand:wayang.refactorCode",
-  "onCommand:wayang.findAndFix",
-  "onCommand:wayang.clearMemory",
-  "onCommand:wayang.showMemory",
-  "onCommand:wayang.configure",
-  "onCommand:wayang.refreshTasks",
-  "onCommand:wayang.cancelTask"
-],
+    "onCommand:wayang.analyzeFile",
+    "onCommand:wayang.generateTests",
+    "onCommand:wayang.explainCode",
+    "onCommand:wayang.refactorCode",
+    "onCommand:wayang.findAndFix",
+    "onCommand:wayang.clearMemory",
+    "onCommand:wayang.showMemory",
+    "onCommand:wayang.configure",
+    "onCommand:wayang.refreshTasks",
+    "onCommand:wayang.cancelTask"
+  ],
   "contributes": {
     "commands": [
-      { "command": "wayang.sendQuery", "title": "Wayang Code: Send Query" },
-      { "command": "wayang.analyzeFile", "title": "Wayang Code: Analyze File" },
-      { "command": "wayang.generateTests", "title": "Wayang Code: Generate Tests" },
-      { "command": "wayang.explainCode", "title": "Wayang Code: Explain Code" },
-      { "command": "wayang.refactorCode", "title": "Wayang Code: Refactor Code" },
-      { "command": "wayang.findAndFix", "title": "Wayang Code: Find & Fix Issues" },
-      { "command": "wayang.clearMemory", "title": "Wayang Code: Clear Memory" },
-      { "command": "wayang.showMemory", "title": "Wayang Code: Show Memory" },
-      { "command": "wayang.configure", "title": "Wayang Code: Configure" },
-      { "command": "wayang.refreshTasks", "title": "Wayang Code: Refresh Tasks" },
-      { "command": "wayang.cancelTask", "title": "Wayang Code: Cancel Task" }
+      {
+        "command": "wayang.sendQuery",
+        "title": "Wayang Code: Send Query"
+      },
+      {
+        "command": "wayang.analyzeFile",
+        "title": "Wayang Code: Analyze File"
+      },
+      {
+        "command": "wayang.generateTests",
+        "title": "Wayang Code: Generate Tests"
+      },
+      {
+        "command": "wayang.explainCode",
+        "title": "Wayang Code: Explain Code"
+      },
+      {
+        "command": "wayang.refactorCode",
+        "title": "Wayang Code: Refactor Code"
+      },
+      {
+        "command": "wayang.findAndFix",
+        "title": "Wayang Code: Find & Fix Issues"
+      },
+      {
+        "command": "wayang.clearMemory",
+        "title": "Wayang Code: Clear Memory"
+      },
+      {
+        "command": "wayang.showMemory",
+        "title": "Wayang Code: Show Memory"
+      },
+      {
+        "command": "wayang.configure",
+        "title": "Wayang Code: Configure"
+      },
+      {
+        "command": "wayang.refreshTasks",
+        "title": "Wayang Code: Refresh Tasks"
+      },
+      {
+        "command": "wayang.cancelTask",
+        "title": "Wayang Code: Cancel Task"
+      }
     ],
     "viewsContainers": {
       "activitybar": [
@@ -52,39 +85,43 @@
         {
           "id": "wayangChat",
           "name": "Chat",
-          "type": "webview"
+          "type": "webview",
+          "initialContent": "Loading...",
+          "visibility": "visible"
         }
       ]
-    }
+    },
+    "viewsWelcome": [
+      {
+        "view": "wayangChat",
+        "contents": "Welcome to Wayang Code Assistant!\n\n[Open Chat](command:wayang.openChat)"
+      }
+    ]
   },
   "main": "./dist/extension.js",
-"assets": [
-  "media/*"
-],
+  "assets": [
+    "media/*"
+  ],
   "repository": {
     "type": "git",
     "url": ""
   },
-
-
-
   "scripts": {
-  "vscode:prepublish": "pnpm run package",
-  "compile": "pnpm run check-types && pnpm run lint && npm run build:webview && node esbuild.js",
-  "watch": "npm-run-all -p watch:*",
-  "watch:esbuild": "node esbuild.js --watch",
-  "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-  "package": "pnpm run check-types && pnpm run lint && npm run build:webview && node esbuild.js --production",
-  "compile-tests": "tsc -p . --outDir out",
-  "watch-tests": "tsc -p . -w --outDir out",
-  "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
-  "check-types": "tsc --noEmit",
-  "lint": "eslint src",
-  "test": "vscode-test",
-  "build:webview": "esbuild src/scripts/client-script.js --bundle --outdir=dist/scripts --platform=browser",
-  "build": "npm run build:webview && tsc -p ./"
-},
-
+    "vscode:prepublish": "pnpm run package",
+    "compile": "pnpm run check-types && pnpm run lint && npm run build:webview && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "pnpm run check-types && pnpm run lint && npm run build:webview && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test",
+    "build:webview": "esbuild src/scripts/client-script.js --bundle --outdir=dist/scripts --platform=browser",
+    "build": "npm run build:webview && tsc -p ./"
+  },
   "devDependencies": {
     "@babel/core": "^7.28.3",
     "@babel/preset-env": "^7.28.3",
