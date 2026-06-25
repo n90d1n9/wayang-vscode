@@ -12,9 +12,14 @@ export class Header {
                     <button class="mode-btn" data-mode="review" data-action="setMode">🔍 Review</button>
                     <button class="mode-btn" data-mode="test" data-action="setMode">🧪 Test</button>
                 </div>
-                <button class="header-btn" data-action="toggleContext" title="Toggle Project Context">
-                    📋 ${state.showContext ? 'Hide' : 'Show'} Context
-                </button>
+                <div class="header-actions">
+                    <button class="header-btn" data-action="toggleSettings" title="Server Settings">
+                        ⚙️ Settings
+                    </button>
+                    <button class="header-btn" data-action="toggleContext" title="Toggle Project Context">
+                        📋 ${state.showContext ? 'Hide' : 'Show'} Context
+                    </button>
+                </div>
             </div>
         `;
     }

@@ -62,6 +62,27 @@ export interface SessionInfo {
     messageCount: number;
     lastActivity: Date;
     isActive: boolean;
+    projectId?: string;
+    tokenUsage?: TokenUsage;
+}
+
+export interface ProjectInfo {
+    id: string;
+    name: string;
+    path: string;
+    createdAt: Date;
+    lastActivity: Date;
+    sessionCount: number;
+    totalTokenUsage?: TokenUsage;
+}
+
+export interface TokenUsage {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    quotaLimit?: number;
+    quotaRemaining?: number;
+    resetDate?: Date;
 }
 
 export type LoadingMessages = {
