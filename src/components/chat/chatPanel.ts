@@ -23,48 +23,45 @@ export class ChatPanel {
     this.state = { ...this.state, ...newState };
   }
 
-  public render(): string {
-    const scriptUri = this.resourceUri("dist", "scripts", "client-script.js");
-    const styles = getCleanStyles();
-    const csp = [
-      "default-src 'none'",
-      `img-src ${this.webview.cspSource} https:`,
-      `script-src ${this.webview.cspSource}`,
-      `style-src 'unsafe-inline' ${this.webview.cspSource}`
-    ].join("; ");
-
+  // In ChatPanel.render()
+// In ChatPanel.render()
+public render(): string {
     return `
-        <div class="chat-container">
-          ${new Header().render(this.state)}
+        <div class="container">
+            <header class="header">
+                ${new Header().render(this.state)}
+            </header>
+            
+            <div class="chat-main">
+                <aside class="sidebar">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <h3>Sessions</h3>
+                        <button class="session-btn" onclick="createNewSession()" title="New Session">+</button>
+                    </div>
+                    ${new SessionsPanel().render(this.state)}
+                    ${this.getProjectContext()}
+                    <div style="margin-top:12px;">
+                        ${new Toolbar().render(this.state)}
+                    </div>
+                </aside>
 
-          <div class="main-content">
-            <aside class="sidebar">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                <h3>Sessions</h3>
-                <button class="new-session-btn" title="New Session (Ctrl+Shift+N)">+</button>
-              </div>
-              ${new SessionsPanel().render(this.state)}
-              ${this.getProjectContext()}
-              <div style="margin-top:12px;">
-                ${new Toolbar().render(this.state)}
-              </div>
-            </aside>
-
-            <section class="chat-area">
-              <div class="chat-messages" id="chatMessages">
-                ${new Messages().render(this.state)}
-                ${this.state.isStreaming ? `<div class="typing-indicator">Assistant is typing<span class="dots">...</span></div>` : ""}
+                <section class="chat-area">
+                    <main class="chat-messages" id="chatMessages">
+                        ${new Messages().render(this.state)}
+                        ${this.state.isStreaming ? `<div class="typing-indicator">Assistant is typing<span class="dots">...</span></div>` : ""}
+                    </main>
+                    <div class="chat-input">
+                        ${new InputArea().render(this.state)}
+                    </div>
+                </section>
             </div>
-              <div class="input-section">
-                ${new InputArea().render(this.state)}
-              </div>
-            </section>
-          </div>
 
-          ${new StatusBar().render?.(this.state) ?? ""}
+            <footer class="status-bar">
+                ${new StatusBar().render(this.state)}
+            </footer>
         </div>
     `;
-  }
+}
 
   // --- helpers ---
   private resourceUri(...segments: string[]): string {

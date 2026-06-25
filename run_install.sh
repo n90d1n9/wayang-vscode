@@ -1,2 +1,2 @@
 #!/bin/bash
-code --install-extension wayang-code-0.0.1.vsix 
+code --install-extension bin/wayang-code-*.vsix 

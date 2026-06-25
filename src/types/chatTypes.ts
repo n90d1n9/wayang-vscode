@@ -86,3 +86,12 @@ export interface MemoryItem {
 }
 
 export type StreamCallback = (chatHistory: ChatMessage[]) => void;
+
+export interface WebviewState {
+    isSessionsPanelOpen: boolean;
+    currentMode: string;
+    sessions: any[];
+    projectContext: any;
+    chatHistory: any[];
+    // Add other state properties as needed
+}
