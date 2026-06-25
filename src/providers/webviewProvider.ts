@@ -4,6 +4,7 @@ import { ChatService } from "../services/chatService";
 import { SessionService } from "../services/sessionService";
 import { ProjectService } from "../services/projectService";
 import { LLMService } from "../services/llmService";
+import { ProjectSessionService } from "../services/projectSessionService";
 import { ChatPanel } from "../components/chat/chatPanel";
 import { MessageHandler } from "../handlers/messageHandler";
 import { WebviewState } from "../types/chatTypes";
@@ -19,6 +20,7 @@ export class WayangWebviewProvider implements vscode.WebviewViewProvider {
     private sessionService: SessionService;
     private projectService: ProjectService;
     private llmService: LLMService;
+    private projectSessionService: ProjectSessionService;
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -28,6 +30,8 @@ export class WayangWebviewProvider implements vscode.WebviewViewProvider {
         this.sessionService = new SessionService();
         this.llmService = new LLMService(agentClient);
         this.projectService = new ProjectService(this.llmService);
+        this.projectSessionService = new ProjectSessionService();
+        this.projectSessionService.loadFromWorkspace();
     }
 
     public resolveWebviewView(
@@ -119,10 +123,14 @@ export class WayangWebviewProvider implements vscode.WebviewViewProvider {
                             this._view?.webview.postMessage({
                                 type: "updateState",
                                 state: {
-                                    sessions: this.sessionService
+                                    sessions: this.projectSessionService
                                         .getAllSessions(),
-                                    currentSessionId: this.sessionService
+                                    projects: this.projectSessionService
+                                        .getAllProjects(),
+                                    currentSessionId: this.projectSessionService
                                         .getCurrentSessionId(),
+                                    currentProjectId: this.projectSessionService
+                                        .getCurrentProjectId(),
                                     projectContext: this.projectService
                                         .getProjectContext(),
                                     // ... other initial state
@@ -152,11 +160,106 @@ export class WayangWebviewProvider implements vscode.WebviewViewProvider {
                             break;
 
                         case "createNewSession":
-                            const newSession = this.sessionService
+                            const newSession = await this.projectSessionService
                                 .createNewSession();
                             this._view?.webview.postMessage({
                                 type: "updateSessions",
-                                sessions: this.sessionService.getAllSessions(),
+                                sessions: this.projectSessionService.getAllSessions(),
+                            });
+                            break;
+
+                        case "duplicateSession":
+                            const duplicatedSession = await this.projectSessionService
+                                .duplicateSession(message.sessionId);
+                            if (duplicatedSession) {
+                                this._view?.webview.postMessage({
+                                    type: "updateSessions",
+                                    sessions: this.projectSessionService.getAllSessions(),
+                                });
+                            }
+                            break;
+
+                        case "resumeSession":
+                            const resumed = await this.projectSessionService
+                                .resumeSession(message.sessionId);
+                            if (resumed) {
+                                this._view?.webview.postMessage({
+                                    type: "updateSessions",
+                                    sessions: this.projectSessionService.getAllSessions(),
+                                });
+                            }
+                            break;
+
+                        case "renameSession":
+                            await this.projectSessionService
+                                .renameSession(message.sessionId, message.newName);
+                            this._view?.webview.postMessage({
+                                type: "updateSessions",
+                                sessions: this.projectSessionService.getAllSessions(),
+                            });
+                            break;
+
+                        case "deleteSession":
+                            const deleted = await this.projectSessionService
+                                .deleteSession(message.sessionId);
+                            if (deleted) {
+                                this._view?.webview.postMessage({
+                                    type: "updateSessions",
+                                    sessions: this.projectSessionService.getAllSessions(),
+                                });
+                            }
+                            break;
+
+                        case "createProject":
+                            const newProject = await this.projectSessionService
+                                .createProject(message.name, message.path);
+                            this._view?.webview.postMessage({
+                                type: "updateProjects",
+                                projects: this.projectSessionService.getAllProjects(),
+                            });
+                            break;
+
+                        case "switchProject":
+                            const switched = await this.projectSessionService
+                                .switchProject(message.projectId);
+                            if (switched) {
+                                this._view?.webview.postMessage({
+                                    type: "updateProjects",
+                                    projects: this.projectSessionService.getAllProjects(),
+                                });
+                                this._view?.webview.postMessage({
+                                    type: "updateSessions",
+                                    sessions: this.projectSessionService.getAllSessions(),
+                                });
+                            }
+                            break;
+
+                        case "deleteProject":
+                            const projectDeleted = await this.projectSessionService
+                                .deleteProject(message.projectId);
+                            if (projectDeleted) {
+                                this._view?.webview.postMessage({
+                                    type: "updateProjects",
+                                    projects: this.projectSessionService.getAllProjects(),
+                                });
+                            }
+                            break;
+
+                        case "renameProject":
+                            await this.projectSessionService
+                                .renameProject(message.projectId, message.newName);
+                            this._view?.webview.postMessage({
+                                type: "updateProjects",
+                                projects: this.projectSessionService.getAllProjects(),
+                            });
+                            break;
+
+                        case "getTokenUsage":
+                            const tokenUsage = this.projectSessionService
+                                .getTokenUsage(message.sessionId || this.projectSessionService.getCurrentSessionId()!);
+                            this._view?.webview.postMessage({
+                                type: "updateTokenUsage",
+                                tokenUsage: tokenUsage,
                             });
                             break;
 

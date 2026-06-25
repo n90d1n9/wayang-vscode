@@ -7,6 +7,7 @@ import { Messages } from "./messages";
 import { SessionsPanel } from "./sessionPanel";
 import { Toolbar } from "./toolbar";
 import { getCleanStyles } from "./styles";
+import { SettingsPanel } from "./SettingsPanel";
 
 export class ChatPanel {
   private webview: vscode.Webview;
@@ -31,6 +32,8 @@ public render(): string {
             <header class="header">
                 ${new Header().render(this.state)}
             </header>
+            
+            ${new SettingsPanel().render(this.state)}
             
             <div class="chat-main">
                 <aside class="sidebar">
