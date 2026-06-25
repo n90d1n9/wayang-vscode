@@ -8,6 +8,8 @@ dist/
 build/
 target/
 
+bin
+
 # Python
 __pycache__/
 *.pyc
